@@ -5,9 +5,9 @@ pragma solidity ^0.4.24;
  * @title TicTacToe contract
  **/
 contract TicTacToe {
-    address[4] public players;
-    uint[4] public playersJoined;
-    mapping(address => uint) public walletToPlayer;
+    address[2] public players;
+    uint public playersJoined;
+
     /**
       Amount to bet
      */
@@ -16,30 +16,43 @@ contract TicTacToe {
     /**
      turn
      1 - players[0]'s turn
-     2 - players[1]'s turn
-     3 - players[2]'s turn
-     4 - players[3]'s turn     
+     2 - players[1]'s turn 
      */
     uint public turn = 1;
 
     /**
      status
      0 - Not started
-     1 - players[0] and players[2] won
-     2 - players[1] and players[3] won
+     1 - players[0] won
+     2 - players[1] won
      3 - draw
      4 - Ongoing
      */
     uint public status = 0;
     bool public paidWinner = false;
     /**
-    board status
-     0    1    2
-     3    4    5
-     6    7    8
+    No.	Class of ship	Size
+    1	  Carrier	      5
+    2	  Battleship   	4
+    3	  Destroyer	    3
+    4	  Submarine	    3
+    5	  Patrol Boat	  2
      */
-    uint[4][4][4] private board;
+    uint[2][10][10] private fleet;
+    uint[2][10][10] public guesses;
 
+
+    /**
+    No.	          Class of ship 	Hit Required
+    shipsHit[0]	  Carrier	        5
+    shipsHit[1]	  Battleship   	  4
+    shipsHit[2]	  Destroyer	      3
+    shipsHit[3]	  Submarine	      3
+    shipsHit[4]	  Patrol Boat	    2
+     */
+    uint[5] public shipLength = [5, 4, 3, 3, 2];
+    uint[2][5] public shipsHit;
+    bool[2][5] public shipSank;
     /**
       Timeout
      */
@@ -48,177 +61,132 @@ contract TicTacToe {
 
     /**
       * @dev Deploy the contract to create a new game
-      * @param teammate The address of player3
-      * @param opponent1 The address of player2
-      * @param opponent2 The address of player4
+      * @param opponent The address of player2
+      * @param _fleet [row, col, dir] of size shipLength[i]
+      * dir  
+        0   left
+        1   right
+        2   up
+        3   down
       **/
-    constructor(address teammate, address opponent1, address opponent2) public payable {
-        require(msg.sender != opponent1 && msg.sender != opponent2, "No self play.");
-        require(teammate != opponent1 && teammate != opponent2 , "No self play.");
-        require(msg.value > 0, "Bet too small");
-        // require(msg.value <= msg.sender.balance, "Player 1 insufficient balance.");
-        // require(msg.value <= opponent.balance, "Player 2 insufficient balance.");
+    constructor(address opponent, uint[5][3] memory _fleet) public payable validFleet(_fleet, 1){
+      require(msg.sender != opponent, "No self play.");
+      require(msg.value > 0, "Bet too small");
+      // require(msg.value <= msg.sender.balance, "Player 1 insufficient balance.");
+      // require(msg.value <= opponent.balance, "Player 2 insufficient balance.");
 
-        betAmount = msg.value;
+      betAmount = msg.value;
 
-        players[0] = msg.sender;
-        players[1] = opponent1;
-        players[2] = teammate;
-        players[3] = opponent2;
+      players[0] = msg.sender;
+      players[1] = opponent;
 
-        walletToPlayer[msg.sender] = 1;
-        walletToPlayer[opponent1] = 2;
-        walletToPlayer[teammate] = 3;
-        walletToPlayer[opponent2] = 4;
+      playersJoined = 1;
 
-        playersJoined[0] = betAmount;
+      for (uint8 i = 0; i < _fleet.length; i++) {
+        uint start_row = _fleet[i][0];
+        uint start_col = _fleet[i][1];
+        
+      }
+ 
     }
 
-    function allJoined() public view returns (bool) {
-      for (uint i=0; i < players.length; i++) {
-        if (playersJoined[i] == 0) {
+    function join(uint[5][3] memory _fleet) external payable validFleet(_fleet, 2){
+      require(msg.sender == players[1], "You are not an opponent.");
+      require(playersJoined == 1, "Opponent already joined.");
+      require(msg.value == betAmount, "Wrong bet amount.");
+
+      playersJoined = 2;
+
+      nextTimeoutPhase = (now + timeout);
+      status = 4;
+    }
+
+
+    function validate_grid_and_place_ship(uint start_row, uint end_row, uint start_col, uint end_col, uint shipI, uint player) {
+      for (uint8 r = start_row; i < end_row; i++) {
+        for (uint8 case = start_col; j < end_col; j++) {
+          if (fleet[player-1][r][c] != 0) {
+            return false;
+          }
+        }
+      }
+
+      for (uint8 r = start_row; i < end_row; i++) {
+        for (uint8 case = start_col; j < end_col; j++) {
+          fleet[player-1][r][c] = shipI + 1;
+        }
+      }
+      
+      return true;
+    }
+  
+    function try_to_place_ship_on_grid(uint row, uint col, uint dir, uint shipI, uint player) private return (bool) {
+      uint start_row = row;
+      uint end_row = row + 1;
+      uint start_col = col;
+      uint end_col = col + 1;
+
+      if (row < 0 || row > 9 || col < 0 || col > 9 || dir < 0 || dir > 3) {
+        return false;
+      }
+
+      if (dir == 0) {
+        if (start_col - shipLength[shipI] < 0) {
+          return false;
+        }
+
+        start_col = start_col - shipLength[shipI] + 1;
+
+      } else if (dir == 1) {
+        if (col + shipLength[shipI] > 9){
+          return false;
+        }
+
+        end_col = start_col + shipLength[shipIi];
+
+      } else if (dir == 2){
+        if (row - shipLength[shipI] < 0) {
+          return false;
+        }
+
+        start_row = start_row - shipLength[shipI] + 1;
+      } else if (dir == 3) {
+        if (row + shipLength[shipI] > 9) {
+          return false;
+        }
+
+        end_row = start_row + shipLength[shipI];
+      } 
+
+      return validate_grid_and_place_ship(start_row, end_row, start_col, end_col, shipI, player);
+    }
+
+    function validFleet(uint[5][3] memory _fleet, uint player) private returns (bool) {
+
+      for (uint8 i = 0; i < _fleet.length; i++) {
+        if (!try_to_place_ship_on_grid(_fleet[i][0], _fleet[i][1], _fleet[i][2], i, player)) {
           return false;
         }
       }
+
       return true;
-    }
-
-    function join() external payable {
-      uint playerI = walletToPlayer[msg.sender] - 1;
-      require(playerI > 0, "You are not an opponent.");
-      require(playersJoined[playerI] == 0, "Opponent already joined.");
-      require(msg.value == betAmount, "Wrong bet amount.");
-      
-      playersJoined[playerI] = betAmount;
-
-      if (allJoined()) {
-        nextTimeoutPhase = (now + timeout);
-        status = 4;
-      }
     }
 
 
     /**
-      * @dev Check a, b, c in a line are the same
-      * _threeInALine doesn't check if a, b, c are in a line
-      * @param a position a
-      * @param b position b
-      * @param c position c
-      */    
-    function _fourInALine(uint a, uint b, uint c, uint d) private pure returns (bool){
-        /*Please complete the code here.*/
-        return (a != 0 && a == b && a == c && a == d);
-
+     * @dev ensure it's a valid fleet configuration
+     */
+    modifier _validFleet(uint[5][3] memory _fleet, uint player) {
+      /*Please complete the code here.*/
+      require(validFleet(_fleet, player), "Not your turn!");
+      _;
     }
 
 
-    function winnerInRow() private view returns (uint){
-      for (uint8 i = 0; i < board.length; i++) {
-        for (uint8 j = 0; j < board.length; j++) {
-          if (_fourInALine(board[j][0][i], board[j][1][i], board[j][2][i], board[j][3][i])) {
-            return board[j][0][i];
-          }
-        } 
-      }
-      
-      return 4;
-    }
-
-    function winnerInColumn() private view returns (uint){
-      for (uint8 i = 0; i < board.length; i++) {
-        for (uint8 j = 0; j < board.length; j++) {
-          if (_fourInALine(board[0][j][i], board[1][j][i], board[2][j][i], board[3][j][i])) {
-            return board[0][j][i];
-          }
-        }
-      }
-      return 4;
-    }
-
-    function winnerInDiagonal() private view returns (uint){
-      
-      for (uint8 i = 0; i < board.length; i++) {
-        if (_fourInALine(board[0][0][i], board[1][1][i], board[2][2][i], board[3][3][i])) {
-          return board[0][0][i];
-        }
-        
-        if (_fourInALine(board[0][3][i], board[1][2][i], board[2][1][i], board[3][0][i])) {
-          return board[0][3][i];
-        }
-      }
-      return 4;
-    }
-
-    function winnerInVertical() private view returns (uint){
-      for (uint8 i = 0; i < board.length; i++) {
-        for (uint8 j = 0; j < board.length; j++) {
-          if (_fourInALine(board[i][j][0], board[i][j][1], board[i][j][2], board[i][j][3])) {
-            return board[i][j][0];
-          
-          }
-        } 
-      }
-      
-      return 4;
-    }
-
-    function winnerInVerticalRow() private view returns (uint){
-      for (uint8 i = 0; i < board.length; i++) {
-          if (_fourInALine(board[i][0][0], board[i][1][1], board[i][2][2], board[i][3][3])) {
-            return board[i][0][0];
-          }
-
-          if (_fourInALine(board[i][3][0], board[i][2][1], board[i][1][2], board[i][0][3])) {
-            return board[i][3][0];
-          }
-      }
-      
-      return 4;
-    }
-
-    function winnerInVerticalColumn() private view returns (uint){
-      for (uint8 i = 0; i < board.length; i++) {
-          if (_fourInALine(board[0][i][0], board[1][i][1], board[2][i][2], board[3][i][3])) {
-            return board[i][0][0];
-          }
-
-          if (_fourInALine(board[3][i][0], board[2][i][1], board[1][i][2], board[0][i][3])) {
-            return board[3][i][0];
-          }
-      }
-      
-      return 4;
-    }
-
-    function winnerInVerticalDiagonal() private view returns (uint){
-      if (_fourInALine(board[0][0][0], board[1][1][1], board[2][2][2], board[3][3][3])) {
-        return board[0][0][0];
-      }
-
-      if (_fourInALine(board[0][0][3], board[1][1][2], board[2][2][1], board[3][3][0])) {
-        return board[0][0][3];
-      }
-      
-      if (_fourInALine(board[0][3][0], board[1][2][1], board[2][1][2], board[3][0][3])) {
-        return board[0][3][0];
-      }
-
-      if (_fourInALine(board[0][3][3], board[1][2][2], board[2][1][1], board[3][0][0])) {
-        return board[0][3][3];
-      }
-      
-      return 4;
-    }
-
-    function fullBoard() private view returns (bool){
-      
-      for (uint i=0; i < board.length; i++) {
-        for (uint j=0; j < board.length; j++) {
-          for (uint k=0; k < board.length; k++) {
-            if (board[i][j][k] == 0) {
-              return false;
-            }
-          }
+    function allSank(uint player) {
+      for (uint8 i=0; i < shipSank.length; i++) {
+        if (shipSank[player-1][i] == 0) {
+          return false;
         }
       }
 
@@ -231,76 +199,57 @@ contract TicTacToe {
      */
     function _getStatus() private view returns (uint) {
         /*Please complete the code here.*/
+        bool p1Win = allSank(1);
+        bool p2Win = allSank(2);
 
-        uint cur_status = winnerInRow();
-
-        if (cur_status < 4) {
-          return cur_status;
-        }
-
-        cur_status = winnerInColumn();
-
-        if (cur_status < 4) {
-          return cur_status;
-        }
-
-        cur_status = winnerInDiagonal();
-
-        if (cur_status < 4) {
-          return cur_status;
-        }
-
-        cur_status = winnerInVertical();
-
-        if (cur_status < 4) {
-          return cur_status;
-        }
-
-        cur_status = winnerInVerticalRow();
-
-        if (cur_status < 4) {
-          return cur_status;
-        }
-
-        cur_status = winnerInVerticalColumn();
-
-        if (cur_status < 4) {
-          return cur_status;
-        }
-
-        cur_status = winnerInVerticalDiagonal();
-
-        if (cur_status < 4) {
-          return cur_status;
-        }
-
-        if (fullBoard()) {
+        if (p1Win && p2Win) {
           return 3;
         }
 
-        return 4;
+        if (p1Win) {
+          return 1;
+        }
 
+        if (p2Win) {
+          return 2;
+        }
+
+        return 4;
     }
 
-    
+    function _updateShipsHit(uint pos_x, uint pos_y) {
+      uint cur_ship = fleet[turn - 1][pos_x][pos_y];
+
+        if (cur_ship > 0){
+          shipsHit[turn - 1][cur_ship - 1] += 1;
+          if (shipsHit[turn - 1][cur_ship - 1] == shipLength[cur_ship - 1]) {
+            shipSank[turn - 1] = 1;
+          }
+        }
+
+    }
 
     /**
      * @dev ensure the game is still ongoing before a player moving
      * update the status of the game after a player moving
      */
-    modifier _checkStatus {
+    modifier _checkStatus(uint pos_x, uint pos_y) {
         /*Please complete the code here.*/
         require(status == 4, "Game is not in progess.");
         _;
-        status = _getStatus();
+        _updateShipsHit(pos_x, pos_y);
 
-        if (status == 3) {
-          draw();
-        } else if (status > 0 && status < 3 && !paidWinner) {
-          paidWinner = true;
-          payWinner(status);
-        } 
+        if (turn == 2) {
+          status = _getStatus();
 
+          if (status == 3) {
+            draw();
+          } else if (status > 0 && status < 3 && !paidWinner) {
+            paidWinner = true;
+            payWinner(status);
+          }
+        }
+        
     }
 
     /**
@@ -320,8 +269,7 @@ contract TicTacToe {
       /*Please complete the code here.*/
       require(myTurn(), "Not your turn!");
       _;
-      turn = (turn % 4) + 1;
-
+      turn = (turn % 2) + 1;
     }
 
     /**
@@ -330,9 +278,9 @@ contract TicTacToe {
      * @param pos_y the position the player places at
      * @return true if valid otherwise false
      */
-    function validMove(uint pos_x, uint pos_y, uint pos_z) public view returns (bool) {
+    function validMove(uint pos_x, uint pos_y) public view returns (bool) {
       /*Please complete the code here.*/
-      return pos_x >= 0 && pos_x < 4 && pos_y >= 0 && pos_y < 4 && pos_z >= 0 && pos_z < 4 && board[pos_x][pos_y][pos_z] == 0;
+      return pos_x >= 0 && pos_x < 10 && pos_y >= 0 && pos_y < 10 && guesses[turn-1][pos_x][pos_y] == 0;
 
     }
 
@@ -340,9 +288,9 @@ contract TicTacToe {
      * @dev ensure a move is made is valid before it is made
      */
 
-    modifier _validMove(uint pos_x, uint pos_y, uint pos_z) {
+    modifier _validMove(uint pos_x, uint pos_y) {
       /*Please complete the code here.*/
-      require(validMove(pos_x, pos_y, pos_z), "Invalid Move.");
+      require(validMove(pos_x, pos_y), "Invalid Move.");
       _;
     }    
 
@@ -362,16 +310,16 @@ contract TicTacToe {
      * @param pos_x the position the player places at
      * @param pos_y the position the player places at
      */
-    function move(uint pos_x, uint pos_y, uint pos_z) public _validMove(pos_x, pos_y, pos_z) _checkTimeout _checkStatus _myTurn {
-      board[pos_x][pos_y][pos_z] = (turn - 1) % 2 + 1;
+    function move(uint pos_x, uint pos_y) public _validMove(pos_x, pos_y) _checkTimeout _checkStatus(pos_x, pos_y) _myTurn {
+      guesses[turn - 1][pos_x][pos_y] = 1;
     }
 
     /**
      * @dev show the current board
      * @return board
      */
-    function showBoard() public view returns (uint[4][4][4]) {
-      return board;
+    function showGuesses() public view returns (uint[2][10][10]) {
+      return guesses;
     }
 
     function unlockFundsAfterTimeout() public {
@@ -379,29 +327,20 @@ contract TicTacToe {
         require(nextTimeoutPhase < now, "Game has not yet timed out");
         require(status == 4, "Game has already been rendered inactive.");
         require(!paidWinner, "Winner already paid.");
-        require(players[(turn % 2)] == msg.sender || players[(turn % 2) + 2] == msg.sender, "Must be called by winner.");
+        require(players[(turn % 2)] == msg.sender , "Must be called by winner.");
 
         status = (turn % 2) + 1;
         paidWinner = true;
         payWinner(status);
     }
 
-    function draw() private {
+    function draw() private view {
       players[0].transfer(betAmount);
       players[1].transfer(betAmount);
-      players[2].transfer(betAmount);
-      players[3].transfer(betAmount);
     }
 
-    function payWinner(uint team) private {
-      if (team == 1) {
-        players[0].transfer(betAmount + betAmount);
-        players[2].transfer(betAmount + betAmount);
-      } else {
-        players[1].transfer(betAmount + betAmount);
-        players[3].transfer(betAmount + betAmount);
-      }
-      
+    function payWinner(uint player) private view {
+      players[player - 1].transfer(betAmount + betAmount);
     }
 }
 
