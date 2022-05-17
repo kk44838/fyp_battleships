@@ -22,15 +22,15 @@ h1 {
 #games {
     width: 90%; 
     display: grid; 
-    grid-template-columns: 1fr 1fr 1fr 1fr; 
+    grid-template-columns: 1fr 1fr; 
     /* grid-template-columns: 1fr;  */
     place-items: center;
     grid-gap: 5px; 
 }
 
 .game {
-    width: 280px;
-    height: 280px;
+    width: 300px;
+    height: 300px;
     border: 1px solid #dadada;
     margin: 10px;
     padding: 0;
@@ -42,8 +42,8 @@ h1 {
     float: left;
     overflow: hidden;
     text-decoration:none;
-    width: 70px;
-    height: 70px;
+    width: 30px;
+    height: 30px;
     background: #f1f1f1;
     border: 1px solid #ccc;
     border-right: 1px solid #fff;
@@ -70,8 +70,8 @@ h1 {
 }
 
 .game > li:active {
-    width: 70px;
-    height: 70px;
+    width: 30px;
+    height: 30px;
     border: 0;
 }
 

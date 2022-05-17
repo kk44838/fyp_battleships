@@ -28,10 +28,80 @@
         <div id="new-game-address"></div> -->
         
         Create a new game: <br><br>
-        <input type="text" class="inputs" id="teammate-address" placeholder="Teammate Address"></input>
-        <input type="text" class="inputs" id="opponent-address-1" placeholder="Opponent 1 Address"></input>
-        <input type="text" class="inputs" id="opponent-address-2" placeholder="Opponent 2 Address"></input>
-        <input type="text" class="inputs" id="bet-amount" placeholder="Place Your Bet"></input>
+        <input type="text" class="inputs" id="opponent-address" placeholder="Opponent 1 Address"></input>
+        <input type="text" class="inputs" id="bet-amount" placeholder="Place Your Bet"></input> 
+        <br><br>
+        
+        <label for="ship-0-input">Carrier: Size of 5</label>
+        <div name="ship-0-input">
+            <input type="text" class="inputs" id="ship-0-row" placeholder="Row"></input>
+            <input type="text" class="inputs" id="ship-0-col" placeholder="Column"></input>
+            <select name="ship-0-dirs" class="inputs" id="ship-0-dir" required>
+                <option value="">--Choose Direction--</option>
+                <option value="0">Left</option>
+                <option value="1">Right</option>
+                <option value="2">Up</option>
+                <option value="3">Down</option>
+            </select>
+        </div>
+        <br><br>
+
+        <label for="ship-1-input">Battleship: Size of 4</label>
+        <div name="ship-1-input">
+            <input type="text" class="inputs" id="ship-1-row" placeholder="Row"></input>
+            <input type="text" class="inputs" id="ship-1-col" placeholder="Column"></input>
+            <select name="ship-1-dirs" class="inputs" id="ship-1-dir" required>
+                <option value="">--Choose Direction--</option>
+                <option value="0">Left</option>
+                <option value="1">Right</option>
+                <option value="2">Up</option>
+                <option value="3">Down</option>
+            </select>
+        </div>
+        <br><br>
+
+        <label for="ship-2-input">Destroyer: Size of 3</label>
+        <div name="ship-2-input">
+            <input type="text" class="inputs" id="ship-2-row" placeholder="Row"></input>
+            <input type="text" class="inputs" id="ship-2-col" placeholder="Column"></input>
+            <select name="ship-2-dirs" class="inputs" id="ship-2-dir" required>
+                <option value="">--Choose Direction--</option>
+                <option value="0">Left</option>
+                <option value="1">Right</option>
+                <option value="2">Up</option>
+                <option value="3">Down</option>
+            </select>
+        </div>
+        <br><br>
+
+        <label for="ship-3-input">Submarine: Size of 3</label>
+        <div name="ship-3-input">
+            <input type="text" class="inputs" id="ship-3-row" placeholder="Row"></input>
+            <input type="text" class="inputs" id="ship-3-col" placeholder="Column"></input>
+            <select name="ship-3-dirs" class="inputs" id="ship-3-dir" required>
+                <option value="">--Choose Direction--</option>
+                <option value="0">Left</option>
+                <option value="1">Right</option>
+                <option value="2">Up</option>
+                <option value="3">Down</option>
+            </select>
+        </div>
+        <br><br>
+
+        <label for="ship-4-input">Patrol Boat: Size of 2</label>
+        <div name="ship-4-input">
+            <input type="text" class="inputs" id="ship-4-row" placeholder="Row"></input>
+            <input type="text" class="inputs" id="ship-4-col" placeholder="Column"></input>
+            <select name="ship-4-dirs" class="inputs" id="ship-4-dir" required>
+                <option value="">--Choose Direction--</option>
+                <option value="0">Left</option>
+                <option value="1">Right</option>
+                <option value="2">Up</option>
+                <option value="3">Down</option>
+            </select>
+        </div>
+        <br><br>
+
         <button class="buttons" id="new-game">New Game</button> <br><br>
         <div id="new-game-address"></div>
 
@@ -44,96 +114,12 @@
         <div class="container">
             <h1>Tic-Tac-Toe <div id="player"></div> </h1>
             <span id="games">
-                <ul class="game" id="game1">
-                    <!-- first row -->
-                    <li data-pos-x="0" data-pos-y="0"  data-pos-z="0"></li>
-                    <li data-pos-x="0" data-pos-y="1"  data-pos-z="0"></li>
-                    <li data-pos-x="0" data-pos-y="2"  data-pos-z="0"></li>
-                    <li data-pos-x="0" data-pos-y="3"  data-pos-z="0"></li>
-                    <!-- second row -->
-                    <li data-pos-x="1" data-pos-y="0"  data-pos-z="0"></li>
-                    <li data-pos-x="1" data-pos-y="1"  data-pos-z="0"></li>
-                    <li data-pos-x="1" data-pos-y="2"  data-pos-z="0"></li>
-                    <li data-pos-x="1" data-pos-y="3"  data-pos-z="0"></li>
-                    <!-- third row -->
-                    <li data-pos-x="2" data-pos-y="0"  data-pos-z="0"></li>
-                    <li data-pos-x="2" data-pos-y="1"  data-pos-z="0"></li> 
-                    <li data-pos-x="2" data-pos-y="2"  data-pos-z="0"></li>
-                    <li data-pos-x="2" data-pos-y="3"  data-pos-z="0"></li>
-                    <!-- forth row -->
-                    <li data-pos-x="3" data-pos-y="0"  data-pos-z="0"></li>
-                    <li data-pos-x="3" data-pos-y="1"  data-pos-z="0"></li> 
-                    <li data-pos-x="3" data-pos-y="2"  data-pos-z="0"></li>
-                    <li data-pos-x="3" data-pos-y="3"  data-pos-z="0"></li>
+                <ul class="game" id="fleet">
+                   
                 </ul>
 
-                <ul class="game" id="game2">
-                    <!-- first row -->
-                    <li data-pos-x="0" data-pos-y="0"  data-pos-z="1"></li>
-                    <li data-pos-x="0" data-pos-y="1"  data-pos-z="1"></li>
-                    <li data-pos-x="0" data-pos-y="2"  data-pos-z="1"></li>
-                    <li data-pos-x="0" data-pos-y="3"  data-pos-z="1"></li>
-                    <!-- second row -->
-                    <li data-pos-x="1" data-pos-y="0"  data-pos-z="1"></li>
-                    <li data-pos-x="1" data-pos-y="1"  data-pos-z="1"></li>
-                    <li data-pos-x="1" data-pos-y="2"  data-pos-z="1"></li>
-                    <li data-pos-x="1" data-pos-y="3"  data-pos-z="1"></li>
-                    <!-- third row -->
-                    <li data-pos-x="2" data-pos-y="0"  data-pos-z="1"></li>
-                    <li data-pos-x="2" data-pos-y="1"  data-pos-z="1"></li> 
-                    <li data-pos-x="2" data-pos-y="2"  data-pos-z="1"></li>
-                    <li data-pos-x="2" data-pos-y="3"  data-pos-z="1"></li>
-                    <!-- forth row -->
-                    <li data-pos-x="3" data-pos-y="0"  data-pos-z="1"></li>
-                    <li data-pos-x="3" data-pos-y="1"  data-pos-z="1"></li> 
-                    <li data-pos-x="3" data-pos-y="2"  data-pos-z="1"></li>
-                    <li data-pos-x="3" data-pos-y="3"  data-pos-z="1"></li>
-                </ul>
+                <ul class="game" id="guesses">
 
-                <ul class="game" id="game3">
-                    <!-- first row -->
-                    <li data-pos-x="0" data-pos-y="0"  data-pos-z="2"></li>
-                    <li data-pos-x="0" data-pos-y="1"  data-pos-z="2"></li>
-                    <li data-pos-x="0" data-pos-y="2"  data-pos-z="2"></li>
-                    <li data-pos-x="0" data-pos-y="3"  data-pos-z="2"></li>
-                    <!-- second row -->
-                    <li data-pos-x="1" data-pos-y="0"  data-pos-z="2"></li>
-                    <li data-pos-x="1" data-pos-y="1"  data-pos-z="2"></li>
-                    <li data-pos-x="1" data-pos-y="2"  data-pos-z="2"></li>
-                    <li data-pos-x="1" data-pos-y="3"  data-pos-z="2"></li>
-                    <!-- third row -->
-                    <li data-pos-x="2" data-pos-y="0"  data-pos-z="2"></li>
-                    <li data-pos-x="2" data-pos-y="1"  data-pos-z="2"></li> 
-                    <li data-pos-x="2" data-pos-y="2"  data-pos-z="2"></li>
-                    <li data-pos-x="2" data-pos-y="3"  data-pos-z="2"></li>
-                    <!-- forth row -->
-                    <li data-pos-x="3" data-pos-y="0"  data-pos-z="2"></li>
-                    <li data-pos-x="3" data-pos-y="1"  data-pos-z="2"></li> 
-                    <li data-pos-x="3" data-pos-y="2"  data-pos-z="2"></li>
-                    <li data-pos-x="3" data-pos-y="3"  data-pos-z="2"></li>
-                </ul>
-
-                <ul class="game" id="game4">
-                    <!-- first row -->
-                    <li data-pos-x="0" data-pos-y="0"  data-pos-z="3"></li>
-                    <li data-pos-x="0" data-pos-y="1"  data-pos-z="3"></li>
-                    <li data-pos-x="0" data-pos-y="2"  data-pos-z="3"></li>
-                    <li data-pos-x="0" data-pos-y="3"  data-pos-z="3"></li>
-                    <!-- second row -->
-                    <li data-pos-x="1" data-pos-y="0"  data-pos-z="3"></li>
-                    <li data-pos-x="1" data-pos-y="1"  data-pos-z="3"></li>
-                    <li data-pos-x="1" data-pos-y="2"  data-pos-z="3"></li>
-                    <li data-pos-x="1" data-pos-y="3"  data-pos-z="3"></li>
-                    <!-- third row -->
-                    <li data-pos-x="2" data-pos-y="0"  data-pos-z="3"></li>
-                    <li data-pos-x="2" data-pos-y="1"  data-pos-z="3"></li> 
-                    <li data-pos-x="2" data-pos-y="2"  data-pos-z="3"></li>
-                    <li data-pos-x="2" data-pos-y="3"  data-pos-z="3"></li>
-                    <!-- forth row -->
-                    <li data-pos-x="3" data-pos-y="0"  data-pos-z="3"></li>
-                    <li data-pos-x="3" data-pos-y="1"  data-pos-z="3"></li> 
-                    <li data-pos-x="3" data-pos-y="2"  data-pos-z="3"></li>
-                    <li data-pos-x="3" data-pos-y="3"  data-pos-z="3"></li>
                 </ul>
             </span>
             <!-- Game Messages -->

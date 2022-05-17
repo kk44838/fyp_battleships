@@ -1,18 +1,9 @@
 
 //HTML page environement variables
-var game1 = document.querySelector('#game1');
-var boxes1 = game1.querySelectorAll('li');
-
-var game2 = document.querySelector('#game2');
-var boxes2 = game2.querySelectorAll('li');
-
-var game3 = document.querySelector('#game3');
-var boxes3 = game3.querySelectorAll('li');
-
-var game4 = document.querySelector('#game4');
-var boxes4 = game4.querySelectorAll('li');
-
-const games = [boxes1, boxes2, boxes3, boxes4]
+var fleet = document.querySelector('#fleet');
+var fleetBoxes;
+var guesses = document.querySelector('#guesses');
+var guessesBoxes;
 
 var timerDisplay = document.getElementById('timer');
 var turnDisplay = document.getElementById('whos-turn');
@@ -22,13 +13,14 @@ var newGame = document.getElementById('new-game');
 var joinGame = document.getElementById('join-game');
 // var startGame;
 var player;
-var team;
 var gameOver = false;
 var accounts;
 var betAmount;
 
 var timerStarted = false;
 var startTime;
+
+
 
 if (typeof web3 !== 'undefined') {
     web3 = new Web3(web3.currentProvider);
@@ -57,18 +49,35 @@ var init = async function() {
         TicTacToeContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '3000000' });
     });
     
+    
     //the user can first create or join a game
     newGame.addEventListener('click',newGameHandler,false);
     joinGame.addEventListener('click',joinGameHandler, false);
     
+    createGrid();
+
+    
+    fleetBoxes = fleet.querySelectorAll('li');
+    guessesBoxes = guesses.querySelectorAll('li');
+
     //events listeners for user to click on the board
-    for(var i = 0; i < 4; i++) {
-        for(var j = 0; j < 4*4; j++) {
-            games[i][j].addEventListener('click', clickHandler, false);
-        }
+    for(var i = 0; i < 10*10; i++) {
+        // fleetBoxes[i].addEventListener('click', clickHandler, false);
+        guessesBoxes[i].addEventListener('click', clickHandler, false);
     }
     renderInterval = setInterval(render, 1000);
     render();
+}
+
+var createGrid = function (){
+    fleet.innerHTML = "";
+    guesses.innerHTML = "";
+    for(var i = 0; i < 10; i++) {
+        for(var j = 0; j < 10; j++) {
+            fleet.innerHTML += "<li data-pos-x=\"" + i +"\" data-pos-y=\"" + j + "\"></li>";
+            guesses.innerHTML += "<li data-pos-x=\"" + i +"\" data-pos-y=\"" + j + "\"></li>";
+        }
+    }
 }
 
 var checkWin = function(){
@@ -78,16 +87,16 @@ var checkWin = function(){
         var win;
         TicTacToe.status().then(function(res){
             win = res[0].words[0];
-            console.log(win)
+            // console.log(win)
             var displayResult;
             // statusDisplay.innerHTML = "Status: " + win
             if (win>0 && win<4){
                 if (win==3){
                     displayResult = "Draw ! game is over";
                 } else if (win == 2){
-                    displayResult = "Team 2 wins ! game is over";
+                    displayResult = "Player 2 wins ! game is over";
                 } else if (win == 1) {
-                    displayResult = "Team 1 wins ! game is over";
+                    displayResult = "Player 1 wins ! game is over";
                 }
                 gameOver = true;
                 document.querySelector('#game-messages').innerHTML = displayResult;
@@ -120,25 +129,38 @@ var render = function(){
 
     //renders the board byt fetching the state of the board from the blockchain
     if (typeof TicTacToe != 'undefined'){
-        TicTacToe.showBoard().then(function(res){
-            for (var i = 0; i < 4; i++){
-                for (var j = 0; j < 4; j++){
-                    for (var k = 0; k < 4; k++){
-                        var state = res[0][i][j][k].words[0];
-                        if (state>0){
-                            var box_i = 4 * i + j;
-                            if (state==1){
-                                games[k][box_i].className = 'x';
-                                games[k][box_i].innerHTML = 'x';
-                            } else{
-                                games[k][box_i].className = 'o';
-                                games[k][box_i].innerHTML = 'o';
-                            }
-                        }
+        TicTacToe.showFleet(1).then(function(res){
+            console.log(res[0][0][0].toNumber());
+            for (var i = 0; i < 10; i++){
+                for (var j = 0; j < 10; j++){
+                    var state = res[0][i][j].toNumber();
+                    
+                    if (state > 0){
+                        console.log(state);
+                        var box_i = 4 * i + j;
+                        fleetBoxes[box_i].className = 'x';
+                        fleetBoxes[box_i].innerHTML = state;
                     }
                 }   
             }
         });
+
+        // TicTacToe.showGuesses(1).then(function(res){
+        //     for (var i = 0; i < 10; i++){
+        //         for (var j = 0; j < 10; j++){
+        //             var state = res[0][i][j].toNumber();
+                    
+        //             if (state > 0){
+        //                 console.log(state);
+        //                 var box_i = 4 * i + j;
+        //                 guessesBoxes[box_i].className = 'x';
+        //                 guessesBoxes[box_i].innerHTML = state;
+        //             }
+        //         }   
+        //     }
+        // });
+
+
         checkWin();
 
         if (!gameOver){
@@ -188,13 +210,23 @@ var newGameHandler = function(){
     if (typeof TicTacToe != 'undefined'){
         console.log("There seems to be an existing game going on already");
     } else{
-        var teammateAddress = document.getElementById('teammate-address').value
-        var opponentAddress1 = document.getElementById('opponent-address-1').value
-        var opponentAddress2 = document.getElementById('opponent-address-2').value
+        var opponentAddress = document.getElementById('opponent-address').value
         betAmount = document.getElementById('bet-amount').value;
 
-        console.log(teammateAddress, opponentAddress1, opponentAddress2)
-        TicTacToeContract.new(teammateAddress, opponentAddress1, opponentAddress2, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
+        var fleetRow = new Array(5);
+        var fleetCol = new Array(5);
+        var fleetDir = new Array(5);
+
+        for (var i = 0; i < 5; i++){
+            fleetRow[i] = parseInt(document.getElementById('ship-'+ i +'-row').value);
+            fleetCol[i] = parseInt(document.getElementById('ship-'+ i +'-col').value);
+            fleetDir[i] = parseInt(document.getElementById('ship-'+ i +'-dir').value);
+        }
+
+
+        console.log(opponentAddress)
+        console.log(fleetRow, fleetCol, fleetDir)
+        TicTacToeContract.new(opponentAddress, fleetRow, fleetCol, fleetDir, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
         .then(function(txHash) {
             var waitForTransaction = setInterval(function(){
                 eth.getTransactionReceipt(txHash, function(err, receipt){
@@ -206,8 +238,7 @@ var newGameHandler = function(){
                         document.querySelector('#new-game-address').innerHTML = "BET AMOUNT OF " + betAmount + " PLACED <br><br>" 
                         + "Share the contract address with your opponnent: " + String(TicTacToe.address) + "<br><br>";
                         player = 1;
-                        team = 1;
-                        document.querySelector('#player').innerHTML = "Player 1 (TEAM 1)";
+                        document.querySelector('#player').innerHTML = "Player 1";
                     }
                 })
             }, 300);
@@ -240,8 +271,7 @@ var joinGameConfirmHandler = function(){
     TicTacToe.join({ from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
         TicTacToe.walletToPlayer(accounts[0]).then(function(res) {
             player = res[0]
-            team = (player + 1) % 2 + 1
-            document.querySelector('#player').innerHTML = "Player " + player + " (TEAM " + team + ")";
+            document.querySelector('#player').innerHTML = "Player " + player;
         });
         document.querySelector('#bet-amount-field-join').innerHTML = "Game of " + betAmount + " ETH stakes joined."
 

@@ -1,5 +1,5 @@
 # Instructions
-Once you completed the contract `contracts/TicTacToe.sol`, you can run `docker build -t tic-tac-toe .` to build the tic-tac-toe docker image.
+Once you completed the contract `contracts/TicTacToe.sol`, you can run `docker build -t battleships .` to build the tic-tac-toe docker image.
 
 Prerequisite: please [install docker](https://docs.docker.com/desktop/) on your system.
 
@@ -15,7 +15,7 @@ To set up and play your tic-tac-toe game, you can:
 
 2. start the web server
 
-`docker run -p 8080:8080 -d tic-tac-toe`
+`docker run -p 8080:8080 -d battleships`
 
 3. open `http://localhost:8080/` in two separate web browsers with each a separate Metamask installed, and enjoy the game. On Chrome you can create **two different users** and install Metamask in each. You'll need to configure Metamask to connect to your local chain as well.
 

@@ -6,7 +6,8 @@ pragma solidity ^0.4.24;
  **/
 contract TicTacToe {
     address[2] public players;
-    uint public playersJoined;
+    uint8 public playersJoined;
+    mapping(address => uint8) public walletToPlayer;
 
     /**
       Amount to bet
@@ -38,8 +39,8 @@ contract TicTacToe {
     4	  Submarine	    3
     5	  Patrol Boat	  2
      */
-    uint[2][10][10] private fleet;
-    uint[2][10][10] public guesses;
+    uint8[10][10][2] private fleet;
+    uint8[10][10][2] private guesses;
 
 
     /**
@@ -50,8 +51,8 @@ contract TicTacToe {
     shipsHit[3]	  Submarine	      3
     shipsHit[4]	  Patrol Boat	    2
      */
-    uint[5] public shipLength = [5, 4, 3, 3, 2];
-    uint[2][5] public shipsHit;
+    uint8[5] public shipLength = [5, 4, 3, 3, 2];
+    uint8[2][5] public shipsHit;
     bool[2][5] public shipSank;
     /**
       Timeout
@@ -62,14 +63,16 @@ contract TicTacToe {
     /**
       * @dev Deploy the contract to create a new game
       * @param opponent The address of player2
-      * @param _fleet [row, col, dir] of size shipLength[i]
+      * @param _rows row of ship i
+      * @param _cols col of ship i
+      * @param _dirs direction of ship i
       * dir  
         0   left
         1   right
         2   up
         3   down
       **/
-    constructor(address opponent, uint[5][3] memory _fleet) public payable validFleet(_fleet, 1){
+    constructor(address opponent, uint8[5] _rows, uint8[5] _cols, uint8[5] _dirs) public payable _validFleet(_rows, _cols, _dirs){
       require(msg.sender != opponent, "No self play.");
       require(msg.value > 0, "Bet too small");
       // require(msg.value <= msg.sender.balance, "Player 1 insufficient balance.");
@@ -79,22 +82,23 @@ contract TicTacToe {
 
       players[0] = msg.sender;
       players[1] = opponent;
+      walletToPlayer[msg.sender] = 1;
 
       playersJoined = 1;
 
-      for (uint8 i = 0; i < _fleet.length; i++) {
-        uint start_row = _fleet[i][0];
-        uint start_col = _fleet[i][1];
-        
-      }
- 
+      // bool valid = true;
+      // for (uint8 i = 0; i < _rows.length; i++) {
+      //   valid = valid && try_to_place_ship_on_grid(fleet[0], _rows[i], _cols[i], _dirs[i], i);
+      // }
+      // require(valid, "Invalid Fleet");
     }
 
-    function join(uint[5][3] memory _fleet) external payable validFleet(_fleet, 2){
+    function join(uint8[5] _rows, uint8[5] _cols, uint8[5] _dirs) external payable _validFleet(_rows, _cols, _dirs){
       require(msg.sender == players[1], "You are not an opponent.");
       require(playersJoined == 1, "Opponent already joined.");
       require(msg.value == betAmount, "Wrong bet amount.");
 
+      walletToPlayer[msg.sender] = 2;
       playersJoined = 2;
 
       nextTimeoutPhase = (now + timeout);
@@ -102,29 +106,29 @@ contract TicTacToe {
     }
 
 
-    function validate_grid_and_place_ship(uint start_row, uint end_row, uint start_col, uint end_col, uint shipI, uint player) {
-      for (uint8 r = start_row; i < end_row; i++) {
-        for (uint8 case = start_col; j < end_col; j++) {
-          if (fleet[player-1][r][c] != 0) {
+    function validate_grid_and_place_ship(uint8[10][10] _fleet, uint8 start_row, uint8 end_row, uint8 start_col, uint8 end_col, uint8 shipI) private pure returns (bool) {
+      for (uint8 i = start_row; i < end_row; i++) {
+        for (uint8 j = start_col; j < end_col; j++) {
+          if (_fleet[i][j] > 0) {
             return false;
           }
         }
       }
 
-      for (uint8 r = start_row; i < end_row; i++) {
-        for (uint8 case = start_col; j < end_col; j++) {
-          fleet[player-1][r][c] = shipI + 1;
+      for (uint r = start_row; r < end_row; r++) {
+        for (uint c = start_col; c < end_col; c++) {
+          _fleet[r][c] = shipI + 1;
         }
       }
       
       return true;
     }
   
-    function try_to_place_ship_on_grid(uint row, uint col, uint dir, uint shipI, uint player) private return (bool) {
-      uint start_row = row;
-      uint end_row = row + 1;
-      uint start_col = col;
-      uint end_col = col + 1;
+    function try_to_place_ship_on_grid(uint8[10][10] _fleet, uint8 row, uint8 col, uint8 dir, uint8 shipI) private view returns (bool) {
+      uint8 start_row = row;
+      uint8 end_row = row + 1;
+      uint8 start_col = col;
+      uint8 end_col = col + 1;
 
       if (row < 0 || row > 9 || col < 0 || col > 9 || dir < 0 || dir > 3) {
         return false;
@@ -135,36 +139,36 @@ contract TicTacToe {
           return false;
         }
 
-        start_col = start_col - shipLength[shipI] + 1;
+        start_col = col - shipLength[shipI] + 1;
 
       } else if (dir == 1) {
         if (col + shipLength[shipI] > 9){
           return false;
         }
 
-        end_col = start_col + shipLength[shipIi];
+        end_col = col + shipLength[shipI];
 
       } else if (dir == 2){
         if (row - shipLength[shipI] < 0) {
           return false;
         }
 
-        start_row = start_row - shipLength[shipI] + 1;
+        start_row = row - shipLength[shipI] + 1;
       } else if (dir == 3) {
         if (row + shipLength[shipI] > 9) {
           return false;
         }
 
-        end_row = start_row + shipLength[shipI];
+        end_row = row + shipLength[shipI];
       } 
 
-      return validate_grid_and_place_ship(start_row, end_row, start_col, end_col, shipI, player);
+      return validate_grid_and_place_ship(_fleet, start_row, end_row, start_col, end_col, shipI);
     }
 
-    function validFleet(uint[5][3] memory _fleet, uint player) private returns (bool) {
-
-      for (uint8 i = 0; i < _fleet.length; i++) {
-        if (!try_to_place_ship_on_grid(_fleet[i][0], _fleet[i][1], _fleet[i][2], i, player)) {
+    function validFleet(uint8[5] _rows, uint8[5] _cols, uint8[5] _dirs) private view returns (bool) {
+      uint8[10][10] memory _fleet;
+      for (uint8 i = 0; i < _rows.length; i++) {
+        if (!try_to_place_ship_on_grid(_fleet, _rows[i], _cols[i], _dirs[i], i)) {
           return false;
         }
       }
@@ -176,16 +180,17 @@ contract TicTacToe {
     /**
      * @dev ensure it's a valid fleet configuration
      */
-    modifier _validFleet(uint[5][3] memory _fleet, uint player) {
+    modifier _validFleet(uint8[5] _rows, uint8[5] _cols, uint8[5] _dirs) {
       /*Please complete the code here.*/
-      require(validFleet(_fleet, player), "Not your turn!");
+
+      require(validFleet(_rows, _cols, _dirs), "Invalid Fleet!");
       _;
     }
 
 
-    function allSank(uint player) {
+    function allSank(uint8 player) public view returns (bool) {
       for (uint8 i=0; i < shipSank.length; i++) {
-        if (shipSank[player-1][i] == 0) {
+        if (!shipSank[player-1][i]) {
           return false;
         }
       }
@@ -217,13 +222,13 @@ contract TicTacToe {
         return 4;
     }
 
-    function _updateShipsHit(uint pos_x, uint pos_y) {
-      uint cur_ship = fleet[turn - 1][pos_x][pos_y];
+    function _updateShipsHit(uint pos_x, uint pos_y) private {
+      uint cur_ship = fleet[pos_x][pos_y][turn - 1];
 
         if (cur_ship > 0){
           shipsHit[turn - 1][cur_ship - 1] += 1;
           if (shipsHit[turn - 1][cur_ship - 1] == shipLength[cur_ship - 1]) {
-            shipSank[turn - 1] = 1;
+            shipSank[turn - 1][cur_ship - 1] = true;
           }
         }
 
@@ -280,7 +285,7 @@ contract TicTacToe {
      */
     function validMove(uint pos_x, uint pos_y) public view returns (bool) {
       /*Please complete the code here.*/
-      return pos_x >= 0 && pos_x < 10 && pos_y >= 0 && pos_y < 10 && guesses[turn-1][pos_x][pos_y] == 0;
+      return pos_x >= 0 && pos_x < 10 && pos_y >= 0 && pos_y < 10 && guesses[pos_x][pos_y][turn-1] == 0;
 
     }
 
@@ -311,15 +316,23 @@ contract TicTacToe {
      * @param pos_y the position the player places at
      */
     function move(uint pos_x, uint pos_y) public _validMove(pos_x, pos_y) _checkTimeout _checkStatus(pos_x, pos_y) _myTurn {
-      guesses[turn - 1][pos_x][pos_y] = 1;
+      guesses[pos_x][pos_y][turn - 1] = 1;
     }
 
     /**
      * @dev show the current board
-     * @return board
+     * @return guesses
      */
-    function showGuesses() public view returns (uint[2][10][10]) {
-      return guesses;
+    function showGuesses(uint player) public view returns (uint8[10][10]) {
+      return guesses[player-1];
+    }
+
+    /**
+     * @dev show the current board
+     * @return fleet
+     */
+    function showFleet(uint player) public view returns (uint8[10][10]) {
+      return fleet[player-1];
     }
 
     function unlockFundsAfterTimeout() public {
@@ -334,12 +347,12 @@ contract TicTacToe {
         payWinner(status);
     }
 
-    function draw() private view {
+    function draw() private {
       players[0].transfer(betAmount);
       players[1].transfer(betAmount);
     }
 
-    function payWinner(uint player) private view {
+    function payWinner(uint player) private {
       players[player - 1].transfer(betAmount + betAmount);
     }
 }
