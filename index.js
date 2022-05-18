@@ -1,8 +1,8 @@
 // import _times from "lodash/times";
 
 //HTML page environement variables
-var fleet = document.querySelector('#fleet');
-var fleetBoxes;
+var ship = document.querySelector('#ships');
+var shipBoxes;
 var targets = document.querySelector('#targets');
 var targetsBoxes;
 
@@ -12,14 +12,26 @@ var statusDisplay = document.getElementById('game-status');
 var gameMessages = document.getElementById('game-messages');
 var newGame = document.getElementById('new-game');
 var joinGame = document.getElementById('join-game');
+
 // var startGame;
 var player;
-var gameOver = false;
+var gameFinished = false;
 var accounts;
 var betAmount;
 
 var timerStarted = false;
+var revealStarted = false;
 var startTime;
+
+var shipsGrid;
+var shipsHits;
+
+var targetsGrid;
+var targetsHits;
+
+var secret;
+var salt;
+
 
 const GRID_SIZE = 10;
 
@@ -31,6 +43,14 @@ const SHIP_DESTROYER = 2;
 
 const SHIPS_SIZES = [SHIP_CARRIER, SHIP_BATTLESHIP, SHIP_CRUISER, SHIP_SUBMARINE, SHIP_DESTROYER];
 
+const GAME_NOT_STARTED = 0;
+const GAME_READY = 1;
+const GAME_STARTED = 2;
+const GAME_FINISHED = 3;
+const GAME_DONE = 4;
+
+const HIT = 1;
+const MISS = 2;
 
 if (typeof web3 !== 'undefined') {
     web3 = new Web3(web3.currentProvider);
@@ -65,30 +85,35 @@ var init = async function() {
     joinGame.addEventListener('click',joinGameHandler, false);
     
     displayGrid();
-
     
-    fleetBoxes = fleet.querySelectorAll('li');
+    shipBoxes = ship.querySelectorAll('li');
     targetsBoxes = targets.querySelectorAll('li');
 
+    
     //events listeners for user to click on the board
     for(var i = 0; i < 10*10; i++) {
-        // fleetBoxes[i].addEventListener('click', clickHandler, false);
-        targetsBoxes[i].addEventListener('click', clickHandler, false);
+        // shipBoxes[i].addEventListener('click', clickHandler, false);
+        targetsBoxes[i].addEventListener('click', clickTargetHandler, false);
     }
+
+    shipsHits = createGrid(true);
+    targetsGrid = createGrid(true);
+    targetsHits = createGrid(true);
+
     renderInterval = setInterval(render, 1000);
     render();
 }
 
-var displayGrid = function (){
-    fleet.innerHTML = "";
+function displayGrid(){
+    ship.innerHTML = "";
     targets.innerHTML = "";
     for(var i = 0; i < GRID_SIZE ** 2; i++) {
-        fleet.innerHTML += "<li data-pos-x=\"" + i +"\"></li>";
-        targets.innerHTML += "<li data-pos-x=\"" + i +"\" data-pos-y=\"" + j + "\"></li>";
+        ship.innerHTML += "<li data-pos-x=\"" + i +"\"></li>";
+        targets.innerHTML += "<li data-pos-x=\"" + i +"\"></li>";
     }
 }
 
-var createGrid = function(empty = false){
+function createGrid(empty = false){
     const grid = createEmptyGrid(GRID_SIZE);
 
     if (empty) {
@@ -113,7 +138,7 @@ var createGrid = function(empty = false){
 }
 
 
-var getShips = function() {
+function getShips() {
     const ships = new Array(5);
 
     for (var i = 0; i < 5; i++){
@@ -125,9 +150,9 @@ var getShips = function() {
     return ships;
 }
 
-var placeShipAt = function(grid, shipI, x, y, isVertical) {
+function placeShipAt(grid, shipI, x, y, isVertical) {
   
-    const indexes = _times(SHIPS_SIZES[shipI])
+    const indexes = Array.from({length: SHIPS_SIZES[shipI]}, (_,x) => x)
       .map(i => [isVertical ? x : x + i, isVertical ? y + i : y])
       .map(point => pointToIndex(point));
   
@@ -144,12 +169,12 @@ var placeShipAt = function(grid, shipI, x, y, isVertical) {
     return false;
   }
 
-var pointToIndex = function(point) {
+function pointToIndex (point) {
     const [x, y] = point;
-    return y * GRID_SIZE + x;
+    return x * GRID_SIZE + y;
   }
 
-var createEmptyGrid = function(){
+function createEmptyGrid(){
   const grid = [];
 
   for (let i = 0; i < GRID_SIZE ** 2; i++) {
@@ -159,6 +184,30 @@ var createEmptyGrid = function(){
   return grid;
 }
 
+function obfuscate(ships) {
+    const salt = web3.utils.sha3(shuffle(ships).join(""));
+    const secret = web3.utils.sha3(ships.join("") + salt);
+  
+    return [secret, salt];
+}
+
+
+function shuffle(array) {
+    return array
+            .map(value => ({ value, sort: Math.random() }))
+            .sort((a, b) => a.sort - b.sort)
+            .map(({ value }) => value);
+}
+
+function displayShips(){
+    for (let i = 0; i < GRID_SIZE ** 2; i++) {
+        if (shipsGrid[i] > 0){
+            shipBoxes[i].innerHTML = shipsGrid[i];
+            shipBoxes[i].className = "ship";
+        }
+    }
+}
+
 var checkWin = function(){
 
     //checks the contract on the blockchain to verify if there is a winner or not
@@ -166,36 +215,43 @@ var checkWin = function(){
         var win;
         Battleships.status().then(function(res){
             win = res[0].words[0];
-            // console.log(win)
-            var displayResult;
-            // statusDisplay.innerHTML = "Status: " + win
-            if (win>0 && win<4){
-                if (win==3){
-                    displayResult = "Draw ! game is over";
-                } else if (win == 2){
-                    displayResult = "Player 2 wins ! game is over";
-                } else if (win == 1) {
-                    displayResult = "Player 1 wins ! game is over";
-                }
-                gameOver = true;
-                document.querySelector('#game-messages').innerHTML = displayResult;
+            // 0 - Not started
+            // 1 - Game Ready
+            // 2 - Ongoing
+            // 3 - finished
+            // 4 - done
 
-                for(var i = 0; i < 4; i++) {
-                    for(var j = 0; j < 4*4; j++) {
-                        games[i][j].removeEventListener('click', clickHandler);
-                    }
-                }
-
-                return true;
-            } else if (win == 0){
+            if (win == GAME_NOT_STARTED) {
                 document.querySelector('#game-messages').innerHTML = "Waiting for players...";
-            } else if (win == 4) {
+            } else if (win == GAME_READY) {
+                document.querySelector('#game-messages').innerHTML = "Waiting for first attack!";
+            } else if (win == GAME_STARTED) {
                 document.querySelector('#game-messages').innerHTML = "Game in progress..."
                 if (!timerStarted) {
-                    start = Date.now();
+                    startTime = Date.now();
                     timerStarted = true;
-                    // document.querySelector('#timeout').innerHTML = "<button class=\"buttons\" id=\"timeoutOn\" onclick=\"timeoutHandler()\">Claim Opponent Timeout</button>"
                 }
+            } else if (win == GAME_FINISHED) {
+                if (!revealStarted) {
+                    startTime = Date.now();
+                    revealStarted = true;
+                }
+                gameFinished = true;
+                document.querySelector('#game-messages').innerHTML = "Game finished, reveal your ships: " 
+                                        +"<button class=\"buttons\" id=\"reveal\" onclick=\"revealShipsHandler()\">Reveal Your Ships</button>"
+            } else if (win == GAME_DONE) {
+                gameFinished = true;
+                Battleships.winner().then(function(res){
+                    Battleships.walletToPlayer(res[0]).then(function(res){
+                        document.querySelector('#game-messages').innerHTML = "Player " + res[0] + " wins ! Game is over";
+
+                    });
+                });
+                
+                for(var i = 0; i < GRID_SIZE ** 2; i++) {
+                    targetsBoxes[i].removeEventListener('click', clickTargetHandler);
+                }
+                return true;
             }
         });
     }
@@ -208,45 +264,34 @@ var render = function(){
 
     //renders the board byt fetching the state of the board from the blockchain
     if (typeof Battleships != 'undefined'){
-        Battleships.showFleet(1).then(function(res){
-            console.log(res[0][0][0].toNumber());
-            for (var i = 0; i < 10; i++){
-                for (var j = 0; j < 10; j++){
-                    var state = res[0][i][j].toNumber();
-                    
-                    if (state > 0){
-                        console.log(state);
-                        var box_i = 4 * i + j;
-                        fleetBoxes[box_i].className = 'x';
-                        fleetBoxes[box_i].innerHTML = state;
-                    }
-                }   
+
+        Battleships.showTargets(accounts[0]).then(function(res){
+            for (var i = 0; i < GRID_SIZE ** 2; i++){
+                targetsHits[i] = res[0][i].words[0];
+
+                if (targetsHits[i] == 1) {
+                    targetsBoxes[i].className = 'shipHit';
+                } else if (targetsHits[i] == 2) {
+                    targetsBoxes[i].className = 'shipMiss';
+                }
+
+                if (shipsHits[i] == 1){
+                    shipBoxes[i].className = 'shipHit';
+                } else if (shipsHits[i] == 2) {
+                    shipBoxes[i].className = 'shipMiss';
+                }
             }
         });
 
-        // Battleships.showTargets(1).then(function(res){
-        //     for (var i = 0; i < 10; i++){
-        //         for (var j = 0; j < 10; j++){
-        //             var state = res[0][i][j].toNumber();
-                    
-        //             if (state > 0){
-        //                 console.log(state);
-        //                 var box_i = 4 * i + j;
-        //                 targetsBoxes[box_i].className = 'x';
-        //                 targetsBoxes[box_i].innerHTML = state;
-        //             }
-        //         }   
-        //     }
-        // });
+        const gameIsDone = checkWin();
 
-
-        checkWin();
-
-        if (!gameOver){
+        if (!gameIsDone){
             turnMessageHandler();
+            
             if (timerStarted) {
                 timerHandler();
             }
+
         } else {
             endGameHandler();
         }
@@ -254,7 +299,7 @@ var render = function(){
 }
 
 var timerHandler = function(){
-    timerDisplay.innerHTML = Math.floor((Date.now() - start)/ 1000);
+    timerDisplay.innerHTML = Math.floor((Date.now() - startTime)/ 1000);
 }
 
 var timeoutHandler = function(){
@@ -272,15 +317,27 @@ var timeoutHandler = function(){
 }
 
 var turnMessageHandler = function(){
-    Battleships.turn().then(function(res){
-        if (res[0].words[0] == player){
-            turnDisplay.innerHTML = "Your turn Player " + res[0].words[0] + "!";
-            document.querySelector('#timeout').innerHTML = "<button class=\"buttons\" id=\"timeout\" onclick=\"timeoutHandler()\" disabled>Claim Opponent Timeout</button>"
+    if (typeof Battleships != 'undefined'){
+        if (!gameFinished) {
+            Battleships.turn().then(function(res){
+                if (res[0] == accounts[0]){
+                    turnDisplay.innerHTML = "Your turn Player " + player + "!";
+                    document.querySelector('#timeout').innerHTML = "<button class=\"buttons\" id=\"timeout\" onclick=\"timeoutHandler()\" disabled>Claim Opponent Timeout</button>";
+                } else {
+                    turnDisplay.innerHTML = "Not your turn!";
+                    //  It's Player " + res[0].words[0] + "'s turn!";
+                    document.querySelector('#timeout').innerHTML = "<button class=\"buttons\" id=\"timeout\" onclick=\"timeoutHandler()\">Claim Opponent Timeout</button>";
+                }
+            });
         } else {
-            turnDisplay.innerHTML = "Not your turn! It's Player " + res[0].words[0] + "'s turn!";
-            document.querySelector('#timeout').innerHTML = "<button class=\"buttons\" id=\"timeout\" onclick=\"timeoutHandler()\">Claim Opponent Timeout</button>"
+            turnDisplay.innerHTML = "";
+            if (checkWin()){
+                document.querySelector('#timeout').innerHTML = "";
+            } else {
+                document.querySelector('#timeout').innerHTML = "<button class=\"buttons\" id=\"timeout\" onclick=\"timeoutHandler()\">Claim Opponent Timeout</button>";
+            }      
         }
-    });
+    }
 }
 
 var newGameHandler = function(){
@@ -291,13 +348,12 @@ var newGameHandler = function(){
     } else{
         var opponentAddress = document.getElementById('opponent-address').value
         betAmount = document.getElementById('bet-amount').value;
+        
+        shipsGrid = createGrid();
+        [secret, salt] = obfuscate(shipsGrid);
 
         
-
-
-        console.log(opponentAddress)
-        console.log(fleetRow, fleetCol, fleetDir)
-        BattleshipsContract.new(opponentAddress, fleetRow, fleetCol, fleetDir, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
+        BattleshipsContract.new(opponentAddress, secret, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
         .then(function(txHash) {
             var waitForTransaction = setInterval(function(){
                 eth.getTransactionReceipt(txHash, function(err, receipt){
@@ -310,12 +366,21 @@ var newGameHandler = function(){
                         + "Share the contract address with your opponnent: " + String(Battleships.address) + "<br><br>";
                         player = 1;
                         document.querySelector('#player').innerHTML = "Player 1";
+                        displayShips();
                     }
                 })
             }, 300);
         
         })
         
+    }
+}
+
+var revealShipsHandler = function() {
+    if (typeof Battleships != 'undefined'){
+        Battleships.reveal(shipsGrid.join(''),salt).then(function(res){
+            document.querySelector('#game-messages').innerHTML = "Your ships have been revealed, waiting on other player to reveal..."
+        });
     }
 }
 
@@ -339,27 +404,30 @@ var joinGameHandler = function(){
 }
 
 var joinGameConfirmHandler = function(){
-    Battleships.join({ from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
-        Battleships.walletToPlayer(accounts[0]).then(function(res) {
-            player = res[0]
-            document.querySelector('#player').innerHTML = "Player " + player;
-        });
-        document.querySelector('#bet-amount-field-join').innerHTML = "Game of " + betAmount + " ETH stakes joined."
 
+    shipsGrid = createGrid();
+    [secret, salt] = obfuscate(shipsGrid);
+
+    Battleships.join(secret, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
+        // Battleships.walletToPlayer(accounts[0]).then(function(res) {
+        //     player = res[0];
+        //     document.querySelector('#player').innerHTML = "Player " + player;
+        // });
+        player = 2;
+        document.querySelector('#player').innerHTML = "Player 2";
+        document.querySelector('#bet-amount-field-join').innerHTML = "Game of " + betAmount + " ETH stakes joined."
+        displayShips();
         startTime = Date.now()
     });
     
 }
 
 var endGameHandler = function(){
-    document.querySelector('#timeout').innerHTML = ""
-    turnDisplay.innerHTML = ""
-    // Battleships.paidWinner().then(function(res){
-    //     document.querySelector('#winner-paid').innerHTML = "Winner paid: " + res[0];
-    // });
+    document.querySelector('#timeout').innerHTML = "";
+    turnDisplay.innerHTML = "";
 }
 
-var clickHandler = function() {
+var clickTargetHandler = function() {
 
     //called when the user clicks a cell on the board
 
@@ -367,18 +435,46 @@ var clickHandler = function() {
         if (checkWin()){
             return;
         }
-        var target_x = this.getAttribute('data-pos-x');
-        var target_y = this.getAttribute('data-pos-y');
-        var target_z = this.getAttribute('data-pos-z');
-        Battleships.validMove(target_x, target_y, target_z).then(function(res){
-            if (res[0]) {
-                Battleships.turn().then(function(res) {
-                    if (res[0].words[0] == player) {
-                        TicTacToe.move(target_x, target_y, target_z).catch(function(err){
-                            console.log('something went wrong ' + String(err));
-                        }).then(function(res){
-                            this.removeEventListener('click', clickHandler);
-                            render();
+        var target = this.getAttribute('data-pos-x');
+        Battleships.validMove(target).then(function(isValidMove){
+            if (isValidMove[0]) {
+                Battleships.turn().then(function(whoseTurn) {
+                    if (whoseTurn[0] == accounts[0]) {
+                        Battleships.status().then(function(curStatus){
+                            if (curStatus[0].toNumber() == GAME_READY) {
+                                Battleships.attack(target).catch(function(err){
+                                    console.log('something went wrong ' + String(err));
+                                }).then(function(res){
+                                    targetsBoxes[target].className = 'shipAttack';
+                                    this.removeEventListener('click', clickTargetHandler);
+                                    render();
+                                });
+                            } else if (curStatus[0].toNumber() == GAME_STARTED) {
+                                Battleships.targetIndex().then(function(res) {
+                                    console.log(res[0].toNumber())
+                                    targetIndex = res[0].toNumber();
+
+                                    var wasHit = false;
+                                    if (shipsGrid[targetIndex] > 0) {
+                                        wasHit = true;
+                                    }
+
+                                    Battleships.counterAttack(target, wasHit).catch(function(err){
+                                        console.log('something went wrong ' + String(err));
+                                    }).then(function(res){
+                                        if (wasHit) {
+                                            shipsHits[targetIndex] = HIT;
+                                        } else {
+                                            shipsHits[targetIndex] = MISS;
+                                        }
+                                        
+                                        targetsBoxes[target].className = 'shipAttack';
+                                        this.removeEventListener('click', clickTargetHandler);
+                                        render();
+                                    });
+                                });
+                                
+                            }
                         });
                     }
                 });

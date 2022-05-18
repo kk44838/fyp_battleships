@@ -50,14 +50,32 @@ h1 {
     cursor: pointer;
     text-transform: uppercase;
     text-align: center;
-    padding-top: 20px;
+    padding-top: 6px;
     -moz-box-sizing: border-box;
     box-sizing: border-box;
 }
 
-.game > li.x {
-    font-size: 35px;
+.game > li.ship {
+    font-size: 15px;
     color: #ed4e6e
+}
+
+.game > li.shipAttack {
+    font-size: 15px;
+    color: #ed4e6e;
+    background: #e4e273;
+}
+
+.game > li.shipHit {
+    font-size: 15px;
+    color: white;
+    background: #c51f40;
+}
+
+.game > li.shipMiss {
+    font-size: 15px;
+    color: white;
+    background: #1c19d6;
 }
 
 .game > li.o {

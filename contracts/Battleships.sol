@@ -8,10 +8,11 @@ contract Battleships {
     uint8 constant GRID_SIZE = 10;
 
     // Target hit or miss values
-    int8 constant HIT = 1;
-    int8 constant MISS = -1;
+    uint8 constant HIT = 1;
+    uint8 constant MISS = 2;
 
     // Status constants
+    uint8 constant GAME_NOT_STARTED = 0;
     uint8 constant GAME_READY = 1;
     uint8 constant GAME_STARTED = 2;
     uint8 constant GAME_FINISHED = 3;
@@ -32,7 +33,7 @@ contract Battleships {
 
     mapping(address => uint8) public walletToPlayer;
 
-    address winner;
+    address public winner;
 
     /**
       Amount to bet
@@ -50,16 +51,16 @@ contract Battleships {
      0 - Not started
      1 - Game Ready
      2 - Ongoing
-     3 - void
+     3 - Finished
      4 - done
      */
-    uint8 public status = 0;
+    uint8 public status = GAME_NOT_STARTED;
 
-    uint8 targetIndex;
+    uint8 public targetIndex;
 
     mapping (address => bytes32) secrets;
     mapping (address => string) ships;
-    mapping (address => int8[]) targets;
+    mapping (address => uint8[]) public targets;
     mapping (address => bool) cheated;
 
     /**
@@ -77,6 +78,12 @@ contract Battleships {
      */
     uint256 timeout = 1.5 minutes;
     uint256 nextTimeoutPhase;
+
+        /**
+      Reveal Timeout
+     */
+    uint256 revealTimeout = 5 minutes;
+    uint256 nextRevealTimeoutPhase;
 
     // Modifiers
 
@@ -127,6 +134,16 @@ contract Battleships {
       _;
       nextTimeoutPhase = (now + timeout);
     }    
+
+    /**
+     * @dev ensure the ships are revealed before the timeout
+     */
+
+    modifier _checkRevealTimeout {
+      /*Please complete the code here.*/
+      require(nextRevealTimeoutPhase > now, "Took too long to make move.");
+      _;
+    }   
 
     /**
      * @dev ensure the game status is game ready
@@ -182,21 +199,28 @@ contract Battleships {
      */
     event Attack(address indexed player1, address indexed player2, uint index);
 
-    /// @dev `player1` Address who performed the attack
-    /// @dev `player2` Address who suffured the attack
-    /// @dev `index` Index of the attack
-    /// @dev `hit` Result of the attack
+    /**
+     * @dev `player1` Address who performed the attack
+     * @dev `player2` Address who suffured the attack
+     * @dev `index` Index of the attack
+     * @dev `hit` Result of the attack
+     */
     event AttackResult(address indexed player1, address indexed player2, uint index, bool hit);
 
-    /// @dev `winner` Address who won the game
-    /// @dev `opponent` Address of opponent player
-    /// @dev `void` If game is void (cheated)
-    event GameFinished(address indexed winner, address indexed opponent, bool void);
+    /**
+     * @dev `winner` Address who won the game
+     * @dev `opponent` Address of opponent player
+     * @dev `void` If game is void (cheated)
+     */
 
-    /// @dev `revealer` Address who revealed its ships positions
-    /// @dev `opponent` Address of opponent player
-    /// @dev `ships` Unobfuscated ships positions
-    /// @dev `void` If ships positions are void (cheated)
+    event GameFinished(address indexed winner, address indexed opponent, bool void);
+    /**
+     * @dev `revealer` Address who revealed its ships positions
+     * @dev `opponent` Address of opponent player
+     * @dev `ships` Unobfuscated ships positions
+     * @dev `void` If ships positions are void (cheated)
+     */
+     
     event GameRevealed(address indexed revealer, address indexed opponent, string ships, bool void);
 
 
@@ -206,24 +230,21 @@ contract Battleships {
     /**
       * @dev Deploy the contract to create a new game
       * @param opponent The address of player2
-      * dir  
-        0   left
-        1   right
-        2   up
-        3   down
       **/
     constructor(address opponent, bytes32 secret) public payable {
       require(msg.sender != opponent, "No self play.");
       require(msg.value > 0, "Bet too small");
 
-      betAmount = msg.value;
+      
       turn = msg.sender;
       players[0] = msg.sender;
       players[1] = opponent;
+
       walletToPlayer[msg.sender] = 1;
       secrets[msg.sender] = secret;
-      targets[msg.sender] = new int8[](GRID_SIZE ** 2);
+      targets[msg.sender] = new uint8[](GRID_SIZE ** 2);
       playersJoined = 1;
+      betAmount = msg.value;
 
       emit GameCreated(msg.sender, msg.value);
     }
@@ -233,13 +254,15 @@ contract Battleships {
       require(playersJoined == 1, "Opponent already joined.");
       require(msg.value == betAmount, "Wrong bet amount.");
 
-      secrets[msg.sender] = secret;
       walletToPlayer[msg.sender] = 2;
+      secrets[msg.sender] = secret;
+      targets[msg.sender] = new uint8[](GRID_SIZE ** 2);      
       playersJoined = 2;
       betAmount += msg.value;
 
       nextTimeoutPhase = (now + timeout);
       status = GAME_READY;
+
       emit GameJoined(players[0], msg.sender, msg.value);
     }
 
@@ -271,12 +294,13 @@ contract Battleships {
       if (isWon || isVoid) {
         status = GAME_FINISHED;
         winner = opponent;
+        nextRevealTimeoutPhase = (now + revealTimeout);
 
         emit GameFinished(opponent, msg.sender, isVoid);
       }
     }
 
-    function reveal(string player_ships, string salt) public _gameFinished _isPlayer _notRevealed {
+    function reveal(string player_ships, string salt) public _gameFinished _isPlayer _notRevealed _checkRevealTimeout {
       bytes32 secret = _getSecret(player_ships, salt);
 
       // Checks the integrity of ships
@@ -328,7 +352,7 @@ contract Battleships {
           winner = opponent;
         }
       }
-
+      
       emit GameRevealed(msg.sender, opponent, player_ships, player_cheated);
 
     }
@@ -354,25 +378,34 @@ contract Battleships {
     }
 
 
-    // /**
-    //  * @dev show the current board
-    //  * @return guesses
-    //  */
-    // function showTargets(address player) public view returns (uint8[]) {
-    //   return targets[player];
-    // }
+    /**
+     * @dev show the current board
+     * @return guesses
+     */
+    function showTargets(address player) public view returns (uint8[] memory) {
+      return targets[player];
+    }
 
 
     function unlockFundsAfterTimeout() public {
         //Game must be timed out & still active
-        require(nextTimeoutPhase < now, "Game has not yet timed out");
-        require(status == GAME_STARTED, "Game has already been rendered inactive.");
+        require(nextTimeoutPhase < now && status == GAME_STARTED && turn == _getOpponent(msg.sender)
+              || nextRevealTimeoutPhase < now && status == GAME_FINISHED 
+                                              && bytes(ships[msg.sender]).length > 0 
+                                              && bytes(ships[_getOpponent(msg.sender)]).length == 0
+                                              && !cheated[msg.sender], "Game has not yet timed out");
         require(betAmount > 0, "Winner already paid.");
-        require(turn == _getOpponent(msg.sender) , "Must be called by winner.");
 
         status = GAME_DONE;
         winner = msg.sender;
         payWinner();
+    }
+
+    function payWinner() public _isWinner {
+      uint amount = betAmount;
+      betAmount = 0;
+      
+      msg.sender.transfer(amount);
     }
 
     function _attack(address attacker, address defender, uint8 index) private {
@@ -395,7 +428,7 @@ contract Battleships {
      * @return number of misses, number of hits, number of empty positions
      */
 
-    function _getGridState(int8[] grid) internal pure returns(uint[3]) {
+    function _getGridState(uint8[] grid) internal pure returns(uint[3]) {
       uint misses;
       uint hits;
       uint empty;
@@ -413,18 +446,5 @@ contract Battleships {
       return [misses, hits, empty];
     }
 
-    // function draw() private {
-    //   uint amount = betAmount;
-    //   betAmount = 0;
-    //   players[0].transfer(amount / 2);
-    //   players[1].transfer(amount / 2);
-    // }
-
-    function payWinner() private _isWinner {
-      uint amount = betAmount;
-      betAmount = 0;
-
-      msg.sender.transfer(amount);
-    }
 }
 

@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Tic-Tac-Toe</title>
+  <title>Battleships</title>
   
   
   
@@ -16,7 +16,7 @@
 
   <html>
     <head>
-        <title>TIC TAC TOE</title>
+        <title>Battleships</title>
     </head>
     <body>
 
@@ -27,17 +27,11 @@
         <button class="buttons" id="new-game">New Game</button> <br><br>
         <div id="new-game-address"></div> -->
         
-        Create a new game: <br><br>
-        <input type="text" class="inputs" id="opponent-address" placeholder="Opponent 1 Address"></input>
-        <input type="text" class="inputs" id="bet-amount" placeholder="Place Your Bet"></input> 
-        <br><br>
-        
         <label for="ship-0-input">Carrier: Size of 5</label>
         <div name="ship-0-input">
             <input type="text" class="inputs" id="ship-0-row" placeholder="Row"></input>
             <input type="text" class="inputs" id="ship-0-col" placeholder="Column"></input>
-            <select name="ship-0-dirs" class="inputs" id="ship-0-dir" required>
-                <option value="">--Choose Direction--</option>
+            <select name="ship-0-dirs" class="inputs" id="ship-0-dir">
                 <option value="0">Vertical</option>
                 <option value="1">Horizontal</option>
             </select>
@@ -48,8 +42,7 @@
         <div name="ship-1-input">
             <input type="text" class="inputs" id="ship-1-row" placeholder="Row"></input>
             <input type="text" class="inputs" id="ship-1-col" placeholder="Column"></input>
-            <select name="ship-1-dirs" class="inputs" id="ship-1-dir" required>
-                <option value="">--Choose Direction--</option>
+            <select name="ship-1-dirs" class="inputs" id="ship-1-dir">
                 <option value="0">Vertical</option>
                 <option value="1">Horizontal</option>
             </select>
@@ -60,8 +53,7 @@
         <div name="ship-2-input">
             <input type="text" class="inputs" id="ship-2-row" placeholder="Row"></input>
             <input type="text" class="inputs" id="ship-2-col" placeholder="Column"></input>
-            <select name="ship-2-dirs" class="inputs" id="ship-2-dir" required>
-                <option value="">--Choose Direction--</option>
+            <select name="ship-2-dirs" class="inputs" id="ship-2-dir">
                 <option value="0">Vertical</option>
                 <option value="1">Horizontal</option>
             </select>
@@ -72,8 +64,7 @@
         <div name="ship-3-input">
             <input type="text" class="inputs" id="ship-3-row" placeholder="Row"></input>
             <input type="text" class="inputs" id="ship-3-col" placeholder="Column"></input>
-            <select name="ship-3-dirs" class="inputs" id="ship-3-dir" required>
-                <option value="">--Choose Direction--</option>
+            <select name="ship-3-dirs" class="inputs" id="ship-3-dir">
                 <option value="0">Vertical</option>
                 <option value="1">Horizontal</option>
             </select>
@@ -84,12 +75,16 @@
         <div name="ship-4-input">
             <input type="text" class="inputs" id="ship-4-row" placeholder="Row"></input>
             <input type="text" class="inputs" id="ship-4-col" placeholder="Column"></input>
-            <select name="ship-4-dirs" class="inputs" id="ship-4-dir" required>
-                <option value="">--Choose Direction--</option>
+            <select name="ship-4-dirs" class="inputs" id="ship-4-dir">
                 <option value="0">Vertical</option>
                 <option value="1">Horizontal</option>
             </select>
         </div>
+        <br><br>
+
+        Create a new game: <br><br>
+        <input type="text" class="inputs" id="opponent-address" placeholder="Opponent 1 Address"></input>
+        <input type="text" class="inputs" id="bet-amount" placeholder="Place Your Bet"></input> 
         <br><br>
 
         <button class="buttons" id="new-game">New Game</button> <br><br>
@@ -102,9 +97,9 @@
 
     
         <div class="container">
-            <h1>Tic-Tac-Toe <div id="player"></div> </h1>
+            <h1>Battleships <div id="player"></div> </h1>
             <span id="games">
-                <ul class="game" id="fleet">
+                <ul class="game" id="ships">
                    
                 </ul>
 
