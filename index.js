@@ -1,9 +1,10 @@
+// import _times from "lodash/times";
 
 //HTML page environement variables
 var fleet = document.querySelector('#fleet');
 var fleetBoxes;
-var guesses = document.querySelector('#guesses');
-var guessesBoxes;
+var targets = document.querySelector('#targets');
+var targetsBoxes;
 
 var timerDisplay = document.getElementById('timer');
 var turnDisplay = document.getElementById('whos-turn');
@@ -20,6 +21,15 @@ var betAmount;
 var timerStarted = false;
 var startTime;
 
+const GRID_SIZE = 10;
+
+const SHIP_CARRIER = 5;
+const SHIP_BATTLESHIP = 4;
+const SHIP_CRUISER = 3;
+const SHIP_SUBMARINE = 3;
+const SHIP_DESTROYER = 2;
+
+const SHIPS_SIZES = [SHIP_CARRIER, SHIP_BATTLESHIP, SHIP_CRUISER, SHIP_SUBMARINE, SHIP_DESTROYER];
 
 
 if (typeof web3 !== 'undefined') {
@@ -30,23 +40,23 @@ if (typeof web3 !== 'undefined') {
 }
 const eth = new Eth(web3.currentProvider);
 
-var TicTacToeContract;
-var TicTacToe;
+var BattleshipsContract;
+var Battleships;
 
 //Play functions
 var init = async function() {
-    let response = await fetch('/artifacts/contracts/TicTacToe.sol/TicTacToe.json');
+    let response = await fetch('/artifacts/contracts/Battleships.sol/Battleships.json');
     const data = await response.json()
     const abi = data.abi
     const byteCode = data.bytecode
 
     accounts = await ethereum.request({ method: 'eth_requestAccounts' });
     console.log("The account is " + accounts[0])
-    TicTacToeContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '3000000' });
+    BattleshipsContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '3000000' });
 
     ethereum.on('accountsChanged', async function (accounts) {
         accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-        TicTacToeContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '3000000' });
+        BattleshipsContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '3000000' });
     });
     
     
@@ -54,38 +64,107 @@ var init = async function() {
     newGame.addEventListener('click',newGameHandler,false);
     joinGame.addEventListener('click',joinGameHandler, false);
     
-    createGrid();
+    displayGrid();
 
     
     fleetBoxes = fleet.querySelectorAll('li');
-    guessesBoxes = guesses.querySelectorAll('li');
+    targetsBoxes = targets.querySelectorAll('li');
 
     //events listeners for user to click on the board
     for(var i = 0; i < 10*10; i++) {
         // fleetBoxes[i].addEventListener('click', clickHandler, false);
-        guessesBoxes[i].addEventListener('click', clickHandler, false);
+        targetsBoxes[i].addEventListener('click', clickHandler, false);
     }
     renderInterval = setInterval(render, 1000);
     render();
 }
 
-var createGrid = function (){
+var displayGrid = function (){
     fleet.innerHTML = "";
-    guesses.innerHTML = "";
-    for(var i = 0; i < 10; i++) {
-        for(var j = 0; j < 10; j++) {
-            fleet.innerHTML += "<li data-pos-x=\"" + i +"\" data-pos-y=\"" + j + "\"></li>";
-            guesses.innerHTML += "<li data-pos-x=\"" + i +"\" data-pos-y=\"" + j + "\"></li>";
-        }
+    targets.innerHTML = "";
+    for(var i = 0; i < GRID_SIZE ** 2; i++) {
+        fleet.innerHTML += "<li data-pos-x=\"" + i +"\"></li>";
+        targets.innerHTML += "<li data-pos-x=\"" + i +"\" data-pos-y=\"" + j + "\"></li>";
     }
+}
+
+var createGrid = function(empty = false){
+    const grid = createEmptyGrid(GRID_SIZE);
+
+    if (empty) {
+        return grid;
+    }
+
+    const ships = getShips();
+
+    for (var i = 0; i < 5; i++) {
+        const ship = ships[i];
+
+        placeShipAt(grid, i, ship[0], ship[1], ship[2]);
+        
+
+        if (ship[0] > GRID_SIZE || ship[1] > GRID_SIZE) {
+            throw new Error("Out of bounds");
+        }
+        
+  }
+
+  return grid;
+}
+
+
+var getShips = function() {
+    const ships = new Array(5);
+
+    for (var i = 0; i < 5; i++){
+        const shipRow = parseInt(document.getElementById('ship-'+ i +'-row').value);
+        const shipCol = parseInt(document.getElementById('ship-'+ i +'-col').value);
+        const shipDir = parseInt(document.getElementById('ship-'+ i +'-dir').value);
+        ships[i] = [shipRow, shipCol, shipDir]
+    }
+    return ships;
+}
+
+var placeShipAt = function(grid, shipI, x, y, isVertical) {
+  
+    const indexes = _times(SHIPS_SIZES[shipI])
+      .map(i => [isVertical ? x : x + i, isVertical ? y + i : y])
+      .map(point => pointToIndex(point));
+  
+    // IF: all positions are available
+    if (indexes.every(i => grid[i] === 0)) {
+      // Place ship on grid
+      indexes.forEach(i => {
+        grid[i] = shipI + 1;
+      });
+  
+      return true;
+    }
+  
+    return false;
+  }
+
+var pointToIndex = function(point) {
+    const [x, y] = point;
+    return y * GRID_SIZE + x;
+  }
+
+var createEmptyGrid = function(){
+  const grid = [];
+
+  for (let i = 0; i < GRID_SIZE ** 2; i++) {
+    grid.push(0);
+  }
+
+  return grid;
 }
 
 var checkWin = function(){
 
     //checks the contract on the blockchain to verify if there is a winner or not
-    if (typeof TicTacToe != 'undefined'){
+    if (typeof Battleships != 'undefined'){
         var win;
-        TicTacToe.status().then(function(res){
+        Battleships.status().then(function(res){
             win = res[0].words[0];
             // console.log(win)
             var displayResult;
@@ -128,8 +207,8 @@ var checkWin = function(){
 var render = function(){
 
     //renders the board byt fetching the state of the board from the blockchain
-    if (typeof TicTacToe != 'undefined'){
-        TicTacToe.showFleet(1).then(function(res){
+    if (typeof Battleships != 'undefined'){
+        Battleships.showFleet(1).then(function(res){
             console.log(res[0][0][0].toNumber());
             for (var i = 0; i < 10; i++){
                 for (var j = 0; j < 10; j++){
@@ -145,7 +224,7 @@ var render = function(){
             }
         });
 
-        // TicTacToe.showGuesses(1).then(function(res){
+        // Battleships.showTargets(1).then(function(res){
         //     for (var i = 0; i < 10; i++){
         //         for (var j = 0; j < 10; j++){
         //             var state = res[0][i][j].toNumber();
@@ -153,8 +232,8 @@ var render = function(){
         //             if (state > 0){
         //                 console.log(state);
         //                 var box_i = 4 * i + j;
-        //                 guessesBoxes[box_i].className = 'x';
-        //                 guessesBoxes[box_i].innerHTML = state;
+        //                 targetsBoxes[box_i].className = 'x';
+        //                 targetsBoxes[box_i].innerHTML = state;
         //             }
         //         }   
         //     }
@@ -179,12 +258,12 @@ var timerHandler = function(){
 }
 
 var timeoutHandler = function(){
-    if (typeof TicTacToe != 'undefined'){
+    if (typeof Battleships != 'undefined'){
         if (checkWin()){
             return;
         }
 
-        TicTacToe.unlockFundsAfterTimeout().then(function(res){
+        Battleships.unlockFundsAfterTimeout().then(function(res){
             document.querySelector('#timeout-messages').innerHTML = "Opponent exceeded timeout."
         }).catch(function(err) {
             document.querySelector('#timeout-messages').innerHTML = "Opponent has not exceeded timeout."
@@ -193,7 +272,7 @@ var timeoutHandler = function(){
 }
 
 var turnMessageHandler = function(){
-    TicTacToe.turn().then(function(res){
+    Battleships.turn().then(function(res){
         if (res[0].words[0] == player){
             turnDisplay.innerHTML = "Your turn Player " + res[0].words[0] + "!";
             document.querySelector('#timeout').innerHTML = "<button class=\"buttons\" id=\"timeout\" onclick=\"timeoutHandler()\" disabled>Claim Opponent Timeout</button>"
@@ -207,36 +286,28 @@ var turnMessageHandler = function(){
 var newGameHandler = function(){
 
     //creates a new contract based on the user input of their opponent's address
-    if (typeof TicTacToe != 'undefined'){
+    if (typeof Battleships != 'undefined'){
         console.log("There seems to be an existing game going on already");
     } else{
         var opponentAddress = document.getElementById('opponent-address').value
         betAmount = document.getElementById('bet-amount').value;
 
-        var fleetRow = new Array(5);
-        var fleetCol = new Array(5);
-        var fleetDir = new Array(5);
-
-        for (var i = 0; i < 5; i++){
-            fleetRow[i] = parseInt(document.getElementById('ship-'+ i +'-row').value);
-            fleetCol[i] = parseInt(document.getElementById('ship-'+ i +'-col').value);
-            fleetDir[i] = parseInt(document.getElementById('ship-'+ i +'-dir').value);
-        }
+        
 
 
         console.log(opponentAddress)
         console.log(fleetRow, fleetCol, fleetDir)
-        TicTacToeContract.new(opponentAddress, fleetRow, fleetCol, fleetDir, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
+        BattleshipsContract.new(opponentAddress, fleetRow, fleetCol, fleetDir, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
         .then(function(txHash) {
             var waitForTransaction = setInterval(function(){
                 eth.getTransactionReceipt(txHash, function(err, receipt){
                     if (receipt) {
                         clearInterval(waitForTransaction);
-                        TicTacToe = TicTacToeContract.at(receipt.contractAddress);
+                        Battleships = BattleshipsContract.at(receipt.contractAddress);
                         //display the contract address to share with the opponent
                         
                         document.querySelector('#new-game-address').innerHTML = "BET AMOUNT OF " + betAmount + " PLACED <br><br>" 
-                        + "Share the contract address with your opponnent: " + String(TicTacToe.address) + "<br><br>";
+                        + "Share the contract address with your opponnent: " + String(Battleships.address) + "<br><br>";
                         player = 1;
                         document.querySelector('#player').innerHTML = "Player 1";
                     }
@@ -251,9 +322,9 @@ var newGameHandler = function(){
 var joinGameHandler = function(){
     //idem for joining a game
     var contractAddress = document.getElementById('contract-ID-tojoin').value.trim();
-    TicTacToe = TicTacToeContract.at(contractAddress);
+    Battleships = BattleshipsContract.at(contractAddress);
 
-    TicTacToe.betAmount().then(function(res) {
+    Battleships.betAmount().then(function(res) {
         console.log(res)
         betAmount = web3.utils.fromWei(res[0].toString(), 'ether');
         if (betAmount == 0) {
@@ -268,8 +339,8 @@ var joinGameHandler = function(){
 }
 
 var joinGameConfirmHandler = function(){
-    TicTacToe.join({ from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
-        TicTacToe.walletToPlayer(accounts[0]).then(function(res) {
+    Battleships.join({ from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
+        Battleships.walletToPlayer(accounts[0]).then(function(res) {
             player = res[0]
             document.querySelector('#player').innerHTML = "Player " + player;
         });
@@ -283,7 +354,7 @@ var joinGameConfirmHandler = function(){
 var endGameHandler = function(){
     document.querySelector('#timeout').innerHTML = ""
     turnDisplay.innerHTML = ""
-    // TicTacToe.paidWinner().then(function(res){
+    // Battleships.paidWinner().then(function(res){
     //     document.querySelector('#winner-paid').innerHTML = "Winner paid: " + res[0];
     // });
 }
@@ -292,16 +363,16 @@ var clickHandler = function() {
 
     //called when the user clicks a cell on the board
 
-    if (typeof TicTacToe != 'undefined'){
+    if (typeof Battleships != 'undefined'){
         if (checkWin()){
             return;
         }
         var target_x = this.getAttribute('data-pos-x');
         var target_y = this.getAttribute('data-pos-y');
         var target_z = this.getAttribute('data-pos-z');
-        TicTacToe.validMove(target_x, target_y, target_z).then(function(res){
+        Battleships.validMove(target_x, target_y, target_z).then(function(res){
             if (res[0]) {
-                TicTacToe.turn().then(function(res) {
+                Battleships.turn().then(function(res) {
                     if (res[0].words[0] == player) {
                         TicTacToe.move(target_x, target_y, target_z).catch(function(err){
                             console.log('something went wrong ' + String(err));

@@ -1,5 +1,5 @@
 # Instructions
-Once you completed the contract `contracts/TicTacToe.sol`, you can run `docker build -t battleships .` to build the tic-tac-toe docker image.
+Once you completed the contract `contracts/TicTacToe.sol`, you can run `docker build -t battleships .` to build the battleships docker image.
 
 Prerequisite: please [install docker](https://docs.docker.com/desktop/) on your system.
 
@@ -7,7 +7,7 @@ For WSL run
 
 `sudo dockerd`
 
-To set up and play your tic-tac-toe game, you can:
+To set up and play your battleships game, you can:
 
 1. start the ganache test chain
 
