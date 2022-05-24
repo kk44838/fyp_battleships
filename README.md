@@ -1,5 +1,5 @@
 # Instructions
-Once you completed the contract `contracts/TicTacToe.sol`, you can run `docker build -t battleships .` to build the battleships docker image.
+Once you completed the contract `contracts/Battleships.sol`, you can run `docker build -t battleships .` to build the battleships docker image.
 
 Prerequisite: please [install docker](https://docs.docker.com/desktop/) on your system.
 

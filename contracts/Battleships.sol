@@ -25,8 +25,6 @@ contract Battleships {
     uint8 constant SHIP_SUBMARINE = 3;
     uint8 constant SHIP_PATROL_BOAT = 2;
 
-
-
     address[2] public players;
 
     uint8 public playersJoined;
@@ -46,14 +44,6 @@ contract Battleships {
      */
     address public turn;
 
-    /**
-     status
-     0 - Not started
-     1 - Game Ready
-     2 - Ongoing
-     3 - Finished
-     4 - done
-     */
     uint8 public status = GAME_NOT_STARTED;
 
     uint8 public targetIndex;
@@ -62,16 +52,6 @@ contract Battleships {
     mapping (address => string) ships;
     mapping (address => uint8[]) public targets;
     mapping (address => bool) cheated;
-
-    /**
-    No.	          Class of ship 	Hit Required
-    shipsHit[0]	  Carrier	        5
-    shipsHit[1]	  Battleship   	  4
-    shipsHit[2]	  Destroyer	      3
-    shipsHit[3]	  Submarine	      3
-    shipsHit[4]	  Patrol Boat	    2
-     */
-
 
     /**
       Timeout
@@ -235,7 +215,6 @@ contract Battleships {
       require(msg.sender != opponent, "No self play.");
       require(msg.value > 0, "Bet too small");
 
-      
       turn = msg.sender;
       players[0] = msg.sender;
       players[1] = opponent;
@@ -283,7 +262,7 @@ contract Battleships {
       // Counter Attack
       _attack(msg.sender, opponent, index);
 
-      // Check status
+      // Check game status
       uint[3] memory gridState = _getGridState(targets[opponent]);
       uint fleetSize = SHIP_CARRIER + SHIP_BATTLESHIP 
                         + SHIP_DESTROYER + SHIP_SUBMARINE + SHIP_PATROL_BOAT;
@@ -313,18 +292,12 @@ contract Battleships {
       address opponent = _getOpponent(msg.sender);
       // Check if ships are all HITs
       for (uint i = 0; i < positions.length; i++) {
-        // Position on ocean is empty (ignore)
-        if (positions[i] == "0") {
+        // Position on ocean is empty (ignore) OR Position on target is empty (ignore)
+        if (positions[i] == "0" || targets[opponent][i] == 0) {
           continue;
         }
 
-        // Position on target is empty (ignore)
-        if (targets[opponent][i] == 0) {
-          continue;
-        }
-
-        // Position is a ship
-        // Check if HIT
+        // Position is a ship then Check if HIT
         player_cheated = targets[opponent][i] != HIT;
 
         if (player_cheated) {
