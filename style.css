@@ -55,6 +55,11 @@ h1 {
     box-sizing: border-box;
 }
 
+.game > li.dev {
+    width: 100px;
+    height: 100px;
+}
+
 .game > li.ship {
     font-size: 15px;
     color: #ed4e6e
@@ -92,6 +97,13 @@ h1 {
     height: 30px;
     border: 0;
 }
+
+.game > li.dev:active {
+    width: 100px;
+    height: 100px;
+    border: 0;
+}
+
 
 #nfo {
     text-align:center;

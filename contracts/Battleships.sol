@@ -5,18 +5,19 @@ pragma solidity ^0.4.24;
  * @title Battleships contract
  **/
 contract Battleships {
-    uint8 constant GRID_SIZE = 10;
-
     // Target hit or miss values
     uint8 constant HIT = 1;
     uint8 constant MISS = 2;
 
+    uint8 constant GRID_STANDARD = 10;
+    uint8 constant GRID_DEV = 3;
+
     // Status constants
-    uint8 constant GAME_NOT_STARTED = 0;
-    uint8 constant GAME_READY = 1;
-    uint8 constant GAME_STARTED = 2;
-    uint8 constant GAME_FINISHED = 3;
-    uint8 constant GAME_DONE = 4;
+    uint constant GAME_NOT_STARTED = 0;
+    uint constant GAME_READY = 1;
+    uint constant GAME_STARTED = 2;
+    uint constant GAME_FINISHED = 3;
+    uint constant GAME_DONE = 4;
 
     // Ship size constants
     uint8 constant SHIP_CARRIER = 5;
@@ -25,9 +26,12 @@ contract Battleships {
     uint8 constant SHIP_SUBMARINE = 3;
     uint8 constant SHIP_PATROL_BOAT = 2;
 
+
+    uint public gridSize;
+
     address[2] public players;
 
-    uint8 public playersJoined;
+    uint public playersJoined;
 
     mapping(address => uint8) public walletToPlayer;
 
@@ -44,9 +48,9 @@ contract Battleships {
      */
     address public turn;
 
-    uint8 public status = GAME_NOT_STARTED;
+    uint public status = GAME_NOT_STARTED;
 
-    uint8 public targetIndex;
+    uint public targetIndex;
 
     mapping (address => bytes32) secrets;
     mapping (address => string) ships;
@@ -98,7 +102,7 @@ contract Battleships {
      * @dev ensure a move is made is valid before it is made
      */
 
-    modifier _validMove(uint8 index) {
+    modifier _validMove(uint index) {
       /*Please complete the code here.*/
       require(validMove(index), "Invalid Move.");
       _;
@@ -163,7 +167,7 @@ contract Battleships {
      * @dev `gridSize` The size of the target/ocean grid
      * @dev `bet` The amount of the bet
      */
-    event GameCreated(address indexed owner, uint bet);
+    event GameCreated(address indexed owner, uint bet, uint gridSize);
     
     /**
      * @dev `owner` Address who created the game
@@ -211,21 +215,22 @@ contract Battleships {
       * @dev Deploy the contract to create a new game
       * @param opponent The address of player2
       **/
-    constructor(address opponent, bytes32 secret) public payable {
+    constructor(address opponent, bytes32 secret, uint size) public payable {
       require(msg.sender != opponent, "No self play.");
       require(msg.value > 0, "Bet too small");
 
+      gridSize = size;
       turn = msg.sender;
       players[0] = msg.sender;
       players[1] = opponent;
 
       walletToPlayer[msg.sender] = 1;
       secrets[msg.sender] = secret;
-      targets[msg.sender] = new uint8[](GRID_SIZE ** 2);
+      targets[msg.sender] = new uint8[](gridSize ** 2);
       playersJoined = 1;
       betAmount = msg.value;
 
-      emit GameCreated(msg.sender, msg.value);
+      emit GameCreated(msg.sender, msg.value, size);
     }
 
     function join(bytes32 secret) external payable {
@@ -235,7 +240,7 @@ contract Battleships {
 
       walletToPlayer[msg.sender] = 2;
       secrets[msg.sender] = secret;
-      targets[msg.sender] = new uint8[](GRID_SIZE ** 2);      
+      targets[msg.sender] = new uint8[](gridSize ** 2);      
       playersJoined = 2;
       betAmount += msg.value;
 
@@ -246,12 +251,12 @@ contract Battleships {
     }
 
 
-    function attack(uint8 index) public _gameReady _validMove(index) _checkTimeout _myTurn {
+    function attack(uint index) public _gameReady _validMove(index) _checkTimeout _myTurn {
       status = GAME_STARTED;
       _attack(msg.sender, _getOpponent(msg.sender), index);
     }
 
-    function counterAttack(uint8 index, bool hit) public _gameStarted _validMove(index) _checkTimeout _myTurn {
+    function counterAttack(uint index, bool hit) public _gameStarted _validMove(index) _checkTimeout _myTurn {
       address opponent = _getOpponent(msg.sender);
 
       // Result of Opponent's Attack
@@ -264,8 +269,7 @@ contract Battleships {
 
       // Check game status
       uint[3] memory gridState = _getGridState(targets[opponent]);
-      uint fleetSize = SHIP_CARRIER + SHIP_BATTLESHIP 
-                        + SHIP_DESTROYER + SHIP_SUBMARINE + SHIP_PATROL_BOAT;
+      uint fleetSize = _getFleetSize();
 
       bool isWon = gridState[1] == fleetSize;
       bool isVoid = (fleetSize - gridState[1]) > gridState[2];
@@ -345,9 +349,9 @@ contract Battleships {
      * @param index the position the player places at
      * @return true if valid otherwise false
      */
-    function validMove(uint8 index) public view returns (bool) {
+    function validMove(uint index) public view returns (bool) {
       /*Please complete the code here.*/
-      return index >= 0 && index < 100 && targets[msg.sender][index] == 0;
+      return index >= 0 && index < gridSize ** 2 && targets[msg.sender][index] == 0;
     }
 
 
@@ -381,7 +385,7 @@ contract Battleships {
       msg.sender.transfer(amount);
     }
 
-    function _attack(address attacker, address defender, uint8 index) private {
+    function _attack(address attacker, address defender, uint index) private {
       targetIndex = index;
       turn = defender;
 
@@ -395,6 +399,18 @@ contract Battleships {
     function _getSecret(string player_ships, string salt) internal pure returns(bytes32) {
       return keccak256(abi.encodePacked(player_ships, salt));
     }
+
+
+    function _getFleetSize() internal view returns(uint) {
+      if (gridSize == GRID_DEV) {
+        return SHIP_PATROL_BOAT;
+      }
+
+      return SHIP_CARRIER + SHIP_BATTLESHIP 
+                        + SHIP_DESTROYER + SHIP_SUBMARINE + SHIP_PATROL_BOAT;
+    }
+
+
 
     /**
      * @param grid Target/ocean grid of positions

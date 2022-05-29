@@ -1,5 +1,25 @@
 // import _times from "lodash/times";
 
+const GRID_SIZE_DEV = 3;
+const GRID_SIZE_STANDARD = 10;
+
+const SHIP_CARRIER = 5;
+const SHIP_BATTLESHIP = 4;
+const SHIP_CRUISER = 3;
+const SHIP_SUBMARINE = 3;
+const SHIP_DESTROYER = 2;
+
+const SHIPS_SIZES = [SHIP_CARRIER, SHIP_BATTLESHIP, SHIP_CRUISER, SHIP_SUBMARINE, SHIP_DESTROYER];
+
+const GAME_NOT_STARTED = 0;
+const GAME_READY = 1;
+const GAME_STARTED = 2;
+const GAME_FINISHED = 3;
+const GAME_DONE = 4;
+
+const HIT = 1;
+const MISS = 2;
+
 //HTML page environement variables
 var ship = document.querySelector('#ships');
 var shipBoxes;
@@ -32,25 +52,8 @@ var targetsHits;
 var secret;
 var salt;
 
+var GRID_SIZE = GRID_SIZE_STANDARD;
 
-const GRID_SIZE = 10;
-
-const SHIP_CARRIER = 5;
-const SHIP_BATTLESHIP = 4;
-const SHIP_CRUISER = 3;
-const SHIP_SUBMARINE = 3;
-const SHIP_DESTROYER = 2;
-
-const SHIPS_SIZES = [SHIP_CARRIER, SHIP_BATTLESHIP, SHIP_CRUISER, SHIP_SUBMARINE, SHIP_DESTROYER];
-
-const GAME_NOT_STARTED = 0;
-const GAME_READY = 1;
-const GAME_STARTED = 2;
-const GAME_FINISHED = 3;
-const GAME_DONE = 4;
-
-const HIT = 1;
-const MISS = 2;
 
 if (typeof web3 !== 'undefined') {
     web3 = new Web3(web3.currentProvider);
@@ -84,17 +87,6 @@ var init = async function() {
     newGame.addEventListener('click',newGameHandler,false);
     joinGame.addEventListener('click',joinGameHandler, false);
     
-    displayGrid();
-    
-    shipBoxes = ship.querySelectorAll('li');
-    targetsBoxes = targets.querySelectorAll('li');
-
-    
-    //events listeners for user to click on the board
-    for(var i = 0; i < 10*10; i++) {
-        // shipBoxes[i].addEventListener('click', clickHandler, false);
-        targetsBoxes[i].addEventListener('click', clickTargetHandler, false);
-    }
 
     shipsHits = createGrid(true);
     targetsGrid = createGrid(true);
@@ -111,10 +103,23 @@ function displayGrid(){
         ship.innerHTML += "<li data-pos-x=\"" + i +"\"></li>";
         targets.innerHTML += "<li data-pos-x=\"" + i +"\"></li>";
     }
+
+    shipBoxes = ship.querySelectorAll('li');
+    targetsBoxes = targets.querySelectorAll('li');
+
+    //events listeners for user to click on the board
+    for(var i = 0; i < GRID_SIZE ** 2; i++) {
+        if (GRID_SIZE == GRID_SIZE_DEV) {
+            shipBoxes[i].className = "dev";
+            targetsBoxes[i].className = "dev";
+        }
+        
+        targetsBoxes[i].addEventListener('click', clickTargetHandler, false);
+    }
 }
 
 function createGrid(empty = false){
-    const grid = createEmptyGrid(GRID_SIZE);
+    const grid = createEmptyGrid();
 
     if (empty) {
         return grid;
@@ -122,7 +127,7 @@ function createGrid(empty = false){
 
     const ships = getShips();
 
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < ships.length; i++) {
         const ship = ships[i];
 
         placeShipAt(grid, i, ship[0], ship[1], ship[2]);
@@ -139,20 +144,26 @@ function createGrid(empty = false){
 
 
 function getShips() {
-    const ships = new Array(5);
+    const ships = [];
+    var numShips = 5;
+    if (GRID_SIZE === GRID_SIZE_DEV) {
+        numShips = 1;
+    }
 
-    for (var i = 0; i < 5; i++){
+    for (var i = 0; i < numShips; i++){
         const shipRow = parseInt(document.getElementById('ship-'+ i +'-row').value);
         const shipCol = parseInt(document.getElementById('ship-'+ i +'-col').value);
         const shipDir = parseInt(document.getElementById('ship-'+ i +'-dir').value);
-        ships[i] = [shipRow, shipCol, shipDir]
+        ships.push([shipRow, shipCol, shipDir]);
     }
     return ships;
 }
 
 function placeShipAt(grid, shipI, x, y, isVertical) {
-  
-    const indexes = Array.from({length: SHIPS_SIZES[shipI]}, (_,x) => x)
+    const sizeOfShips = GRID_SIZE === GRID_SIZE_DEV ? [SHIP_DESTROYER] : SHIPS_SIZES;
+
+
+    const indexes = Array.from({length: sizeOfShips[shipI]}, (_,x) => x)
       .map(i => [isVertical ? x : x + i, isVertical ? y + i : y])
       .map(point => pointToIndex(point));
   
@@ -203,7 +214,7 @@ function displayShips(){
     for (let i = 0; i < GRID_SIZE ** 2; i++) {
         if (shipsGrid[i] > 0){
             shipBoxes[i].innerHTML = shipsGrid[i];
-            shipBoxes[i].className = "ship";
+            shipBoxes[i].className += " ship";
         }
     }
 }
@@ -268,17 +279,18 @@ var render = function(){
         Battleships.showTargets(accounts[0]).then(function(res){
             for (var i = 0; i < GRID_SIZE ** 2; i++){
                 targetsHits[i] = res[0][i].words[0];
+                var className = GRID_SIZE === GRID_SIZE_DEV ? "dev " : "";
 
                 if (targetsHits[i] == 1) {
-                    targetsBoxes[i].className = 'shipHit';
+                    targetsBoxes[i].className = className + 'shipHit';
                 } else if (targetsHits[i] == 2) {
-                    targetsBoxes[i].className = 'shipMiss';
+                    targetsBoxes[i].className = className + 'shipMiss';
                 }
 
                 if (shipsHits[i] == 1){
-                    shipBoxes[i].className = 'shipHit';
+                    shipBoxes[i].className = className + 'shipHit';
                 } else if (shipsHits[i] == 2) {
-                    shipBoxes[i].className = 'shipMiss';
+                    shipBoxes[i].className = className + 'shipMiss';
                 }
             }
         });
@@ -348,12 +360,18 @@ var newGameHandler = function(){
     } else{
         var opponentAddress = document.getElementById('opponent-address').value
         betAmount = document.getElementById('bet-amount').value;
+
+        var devMode = document.getElementById('dev').checked;
         
+        if (devMode) {
+            GRID_SIZE = GRID_SIZE_DEV;
+        }
+
         shipsGrid = createGrid();
         [secret, salt] = obfuscate(shipsGrid);
 
         
-        BattleshipsContract.new(opponentAddress, secret, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
+        BattleshipsContract.new(opponentAddress, secret, GRID_SIZE, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
         .then(function(txHash) {
             var waitForTransaction = setInterval(function(){
                 eth.getTransactionReceipt(txHash, function(err, receipt){
@@ -366,7 +384,9 @@ var newGameHandler = function(){
                         + "Share the contract address with your opponnent: " + String(Battleships.address) + "<br><br>";
                         player = 1;
                         document.querySelector('#player').innerHTML = "Player 1";
+                        displayGrid();
                         displayShips();
+
                     }
                 })
             }, 300);
@@ -409,15 +429,20 @@ var joinGameConfirmHandler = function(){
     [secret, salt] = obfuscate(shipsGrid);
 
     Battleships.join(secret, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
-        // Battleships.walletToPlayer(accounts[0]).then(function(res) {
-        //     player = res[0];
-        //     document.querySelector('#player').innerHTML = "Player " + player;
-        // });
-        player = 2;
-        document.querySelector('#player').innerHTML = "Player 2";
-        document.querySelector('#bet-amount-field-join').innerHTML = "Game of " + betAmount + " ETH stakes joined."
-        displayShips();
-        startTime = Date.now()
+        Battleships.gridSize().then(function(res) {
+            player = 2;
+            document.querySelector('#player').innerHTML = "Player 2";
+            document.querySelector('#bet-amount-field-join').innerHTML = "Game of " + betAmount + " ETH stakes joined."
+
+            size = res[0];
+
+            GRID_SIZE = size == GRID_SIZE_DEV ? GRID_SIZE_DEV : GRID_SIZE_STANDARD;
+            displayGrid();
+            displayShips();
+
+            startTime = Date.now();
+        });
+        
     });
     
 }
@@ -445,7 +470,7 @@ var clickTargetHandler = function() {
                                 Battleships.attack(target).catch(function(err){
                                     console.log('something went wrong ' + String(err));
                                 }).then(function(res){
-                                    targetsBoxes[target].className = 'shipAttack';
+                                    targetsBoxes[target].className += ' shipAttack';
                                     this.removeEventListener('click', clickTargetHandler);
                                     render();
                                 });
@@ -468,7 +493,7 @@ var clickTargetHandler = function() {
                                             shipsHits[targetIndex] = MISS;
                                         }
                                         
-                                        targetsBoxes[target].className = 'shipAttack';
+                                        targetsBoxes[target].className += ' shipAttack';
                                         this.removeEventListener('click', clickTargetHandler);
                                         render();
                                     });
