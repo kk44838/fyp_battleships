@@ -36,6 +36,7 @@ var joinGame = document.getElementById('join-game');
 // var startGame;
 var player;
 var gameFinished = false;
+var payWinner = false;
 var accounts;
 var betAmount;
 
@@ -69,12 +70,12 @@ var Battleships;
 //Play functions
 var init = async function() {
     let response = await fetch('/artifacts/contracts/Battleships.sol/Battleships.json');
-    const data = await response.json()
-    const abi = data.abi
-    const byteCode = data.bytecode
+    const data = await response.json();
+    const abi = data.abi;
+    const byteCode = data.bytecode;
 
     accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    console.log("The account is " + accounts[0])
+    console.log("The account is " + accounts[0]);
     BattleshipsContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '3000000' });
 
     ethereum.on('accountsChanged', async function (accounts) {
@@ -254,9 +255,16 @@ var checkWin = function(){
                 gameFinished = true;
                 Battleships.winner().then(function(res){
                     Battleships.walletToPlayer(res[0]).then(function(res){
-                        document.querySelector('#game-messages').innerHTML = "Player " + res[0] + " wins ! Game is over";
+                        document.querySelector('#game-messages').innerHTML = "Player " + res[0] + " wins ! Game is over.";
 
                     });
+
+                    if (!payWinner && res[0] == accounts[0]) {
+                        Battleships.payWinner().then(function(res){ 
+                            document.querySelector('#game-messages').innerHTML += " Winner paid."
+                            payWinner = true;
+                        });
+                    }
                 });
                 
                 for(var i = 0; i < GRID_SIZE ** 2; i++) {
