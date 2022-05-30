@@ -57,8 +57,14 @@ contract Battleships {
     mapping (address => uint8[]) public targets;
     mapping (address => bool) cheated;
 
+      /**
+      Join Game Timeout
+     */
+    uint256 joinTimeout = 5 minutes;
+    uint256 joinDeadline;
+
     /**
-      Timeout
+      Move Timeout
      */
     uint256 timeout = 1.5 minutes;
     uint256 nextTimeoutPhase;
@@ -126,6 +132,12 @@ contract Battleships {
     modifier _checkRevealTimeout {
       /*Please complete the code here.*/
       require(nextRevealTimeoutPhase > now, "Took too long to make move.");
+      _;
+    } 
+
+    modifier _checkJoinTimeout {
+      /*Please complete the code here.*/
+      require(joinDeadline > now, "Took too long to join.");
       _;
     }   
 
@@ -219,21 +231,23 @@ contract Battleships {
       require(msg.sender != opponent, "No self play.");
       require(msg.value > 0, "Bet too small");
 
-      gridSize = size;
       turn = msg.sender;
       players[0] = msg.sender;
       players[1] = opponent;
-
       walletToPlayer[msg.sender] = 1;
-      secrets[msg.sender] = secret;
-      targets[msg.sender] = new uint8[](gridSize ** 2);
       playersJoined = 1;
       betAmount = msg.value;
+
+      gridSize = size;
+      secrets[msg.sender] = secret;
+      targets[msg.sender] = new uint8[](gridSize ** 2);
+
+      joinDeadline = (now + joinTimeout);
 
       emit GameCreated(msg.sender, msg.value, size);
     }
 
-    function join(bytes32 secret) external payable {
+    function join(bytes32 secret) external payable _checkJoinTimeout {
       require(msg.sender == players[1], "You are not an opponent.");
       require(playersJoined == 1, "Opponent already joined.");
       require(msg.value == betAmount, "Wrong bet amount.");
@@ -363,6 +377,16 @@ contract Battleships {
       return targets[player];
     }
 
+    function unlockFundsAfterJoinTimeout() public {
+        //Game must be timed out & still active
+        require(joinDeadline < now, "Game has not yet timed out");
+        require(status == GAME_NOT_STARTED, "Game has Started.");
+        // require(, "Must be called by winner.");
+
+        status = GAME_DONE;
+        winner = msg.sender;
+        payWinner();
+    }
 
     function unlockFundsAfterTimeout() public {
         //Game must be timed out & still active
