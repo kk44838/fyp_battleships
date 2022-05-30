@@ -184,7 +184,7 @@ contract BaseGameTemplate {
       emit GameCreated(msg.sender, msg.value, size);
     }
 
-    function join(bytes32 secret) external payable _checkJoinTimeout {
+    function join() external payable _checkJoinTimeout {
       require(msg.sender == players[1], "You are not an opponent.");
       require(playersJoined == 1, "Opponent already joined.");
       require(msg.value == betAmount, "Wrong bet amount.");
