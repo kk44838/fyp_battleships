@@ -2,9 +2,9 @@
 pragma solidity ^0.4.24;
 
 /**
- * @title Battleships contract
+ * @title BaseGameTemplate contract
  **/
-contract Battleships {
+contract BaseGameTemplate {
     // Status constants
     uint constant GAME_NOT_STARTED = 0;
     uint constant GAME_READY = 1;
