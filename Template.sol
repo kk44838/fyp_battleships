@@ -162,7 +162,7 @@ contract BaseGameTemplate {
 
 
 
-    // Functions
+    // Public Functions
 
     /**
       * @dev Deploy the contract to create a new game
@@ -223,7 +223,6 @@ contract BaseGameTemplate {
     }
 
 
-
     /**
      * @dev check if it's msg.sender's turn
      * @return true if it's msg.sender's turn otherwise false
@@ -272,12 +271,14 @@ contract BaseGameTemplate {
       msg.sender.transfer(amount);
     }
 
+    // Private Functions
+
     function _attack(address attacker, address defender, uint move) private {
       turn = defender;
 
       emit Attack(attacker, defender, move);
     }
 
-    function _getOpponent(address player) internal view returns(address) {
+    function _getOpponent(address player) private view returns(address) {
       return player == players[0] ? players[1] : players[0];
     }

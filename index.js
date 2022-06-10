@@ -3,13 +3,14 @@
 const GRID_SIZE_DEV = 3;
 const GRID_SIZE_STANDARD = 10;
 
-const SHIP_CARRIER = 5;
-const SHIP_BATTLESHIP = 4;
-const SHIP_CRUISER = 3;
-const SHIP_SUBMARINE = 3;
 const SHIP_DESTROYER = 2;
+const SHIP_SUBMARINE = 3;
+const SHIP_CRUISER = 3;
+const SHIP_BATTLESHIP = 4;
+const SHIP_CARRIER = 5;
 
-const SHIPS_SIZES = [SHIP_CARRIER, SHIP_BATTLESHIP, SHIP_CRUISER, SHIP_SUBMARINE, SHIP_DESTROYER];
+
+const SHIPS_SIZES = [SHIP_DESTROYER, SHIP_SUBMARINE, SHIP_CRUISER, SHIP_BATTLESHIP, SHIP_CARRIER, SHIP_BATTLESHIP];
 
 const GAME_NOT_STARTED = 0;
 const GAME_READY = 1;
@@ -50,8 +51,10 @@ var shipsHits;
 var targetsGrid;
 var targetsHits;
 
-var secret;
-var salt;
+var secretLocation;
+var saltLocation;
+var secretGrid;
+var saltGrid;
 
 var GRID_SIZE = GRID_SIZE_STANDARD;
 
@@ -196,9 +199,16 @@ function createEmptyGrid(){
   return grid;
 }
 
-function obfuscate(ships) {
-    const salt = web3.utils.sha3(shuffle(ships).join(""));
-    const secret = web3.utils.sha3(ships.join("") + salt);
+function obfuscateLocation(shipsLocation) {
+    const salt = web3.utils.sha3(shuffle(shipsLocation).map(a => a.join("")).join(""));
+    const secret = web3.utils.sha3(shipsLocation.map(a => a.join("")).join("") + salt);
+  
+    return [secret, salt];
+}
+
+function obfuscateGrid(shipsGrid) {
+    const salt = web3.utils.sha3(shuffle(shipsGrid).join(""));
+    const secret = web3.utils.sha3(shipsGrid.join("") + salt);
   
     return [secret, salt];
 }
@@ -374,12 +384,15 @@ var newGameHandler = function(){
         if (devMode) {
             GRID_SIZE = GRID_SIZE_DEV;
         }
+        
+        shipsLocation = getShips();
+        [secretLocation, saltLocation] = obfuscateLocation(shipsLocation);
 
         shipsGrid = createGrid();
-        [secret, salt] = obfuscate(shipsGrid);
+        [secretGrid, saltGrid] = obfuscateGrid(shipsGrid);
 
         
-        BattleshipsContract.new(opponentAddress, secret, GRID_SIZE, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
+        BattleshipsContract.new(opponentAddress, secretGrid, secretLocation, GRID_SIZE, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
         .then(function(txHash) {
             var waitForTransaction = setInterval(function(){
                 eth.getTransactionReceipt(txHash, function(err, receipt){
@@ -406,7 +419,7 @@ var newGameHandler = function(){
 
 var revealShipsHandler = function() {
     if (typeof Battleships != 'undefined'){
-        Battleships.reveal(shipsGrid.join(''),salt).then(function(res){
+        Battleships.reveal(shipsGrid.join(''), shipsLocation.map(a => a.join("")).join(""), saltGrid, saltLocation).then(function(res){
             document.querySelector('#game-messages').innerHTML = "Your ships have been revealed, waiting on other player to reveal..."
         });
     }
@@ -432,11 +445,14 @@ var joinGameHandler = function(){
 }
 
 var joinGameConfirmHandler = function(){
+    shipsLocation = getShips();
+    [secretLocation, saltLocation] = obfuscateLocation(shipsLocation);
 
     shipsGrid = createGrid();
-    [secret, salt] = obfuscate(shipsGrid);
+    [secretGrid, saltGrid] = obfuscateGrid(shipsGrid);
 
-    Battleships.join(secret, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
+
+    Battleships.join(secretGrid, secretLocation, { from: accounts[0], gas: '3000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
         Battleships.gridSize().then(function(res) {
             player = 2;
             document.querySelector('#player').innerHTML = "Player 2";
@@ -475,7 +491,7 @@ var clickTargetHandler = function() {
                     if (whoseTurn[0] == accounts[0]) {
                         Battleships.status().then(function(curStatus){
                             if (curStatus[0].toNumber() == GAME_READY) {
-                                Battleships.attack(target).catch(function(err){
+                                Battleships.firstAttack(target).catch(function(err){
                                     console.log('something went wrong ' + String(err));
                                 }).then(function(res){
                                     targetsBoxes[target].className += ' shipAttack';
@@ -492,7 +508,7 @@ var clickTargetHandler = function() {
                                         wasHit = true;
                                     }
 
-                                    Battleships.counterAttack(target, wasHit).catch(function(err){
+                                    Battleships.attack(target, wasHit).catch(function(err){
                                         console.log('something went wrong ' + String(err));
                                     }).then(function(res){
                                         if (wasHit) {
