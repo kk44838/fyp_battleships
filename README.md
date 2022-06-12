@@ -11,7 +11,7 @@ To set up and play your battleships game, you can:
 
 1. start the ganache test chain
 
-`docker run -p 8545:8545 -d trufflesuite/ganache-cli:latest -g 0`
+`docker run -p 8545:8545 -d trufflesuite/ganache-cli:latest -g 0 -l 30000000`
 
 2. start the web server
 
