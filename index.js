@@ -80,11 +80,11 @@ var init = async function() {
 
     accounts = await ethereum.request({ method: 'eth_requestAccounts' });
     console.log("The account is " + accounts[0]);
-    BattleshipsContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '30000000' });
+    BattleshipsContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '4500000' });
 
     ethereum.on('accountsChanged', async function (accounts) {
         accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-        BattleshipsContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '30000000' });
+        BattleshipsContract = eth.contract(abi, byteCode, { from: accounts[0], gas: '4500000' });
     });
     
     
@@ -270,9 +270,11 @@ var checkWin = function(){
                     });
 
                     if (!payWinner && res[0] == accounts[0]) {
-                        Battleships.payWinner().then(function(res){ 
+                        payWinner = true;
+                        Battleships.payWinner().catch(function(err) {
+                            payWinner = false;
+                        }).then(function(res){ 
                             document.querySelector('#game-messages').innerHTML += " Winner paid."
-                            payWinner = true;
                             clearInterval(renderInterval);
                         });
                     }
@@ -393,7 +395,7 @@ var newGameHandler = function(){
         [secretGrid, saltGrid] = obfuscateGrid(shipsGrid);
 
         
-        BattleshipsContract.new(opponentAddress, secretGrid, secretLocation, GRID_SIZE, { from: accounts[0], gas: '30000000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
+        BattleshipsContract.new(opponentAddress, secretGrid, secretLocation, GRID_SIZE, { from: accounts[0], gas: '4500000',  value: web3.utils.toWei(betAmount.toString(), "ether")})
         .then(function(txHash) {
             var waitForTransaction = setInterval(function(){
                 eth.getTransactionReceipt(txHash, function(err, receipt){
@@ -453,7 +455,7 @@ var joinGameConfirmHandler = function(){
     [secretGrid, saltGrid] = obfuscateGrid(shipsGrid);
 
 
-    Battleships.join(secretGrid, secretLocation, { from: accounts[0], gas: '30000000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
+    Battleships.join(secretGrid, secretLocation, { from: accounts[0], gas: '4500000',  value: web3.utils.toWei(betAmount.toString(), "ether")}).then(function(res) {
         Battleships.gridSize().then(function(res) {
             player = 2;
             document.querySelector('#player').innerHTML = "Player 2";
